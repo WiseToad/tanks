@@ -12,7 +12,7 @@ class Config:
     def load(self, fileName: str):
         self.__data = {}
         try:
-            with open(fileName, "r") as f:
+            with open(fileName, "r", encoding="utf8") as f:
                 self.__data = yaml.safe_load(f)
             if self.__data is None:
                 self.__data = {}

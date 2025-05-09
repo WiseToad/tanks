@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from threading import Thread, Lock
 from socket import socket, create_server
 from random import randint

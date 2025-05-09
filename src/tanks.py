@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from socket import socket, create_connection
 import pygame
 import os
