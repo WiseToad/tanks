@@ -14,3 +14,8 @@ See tanks.yaml
 - cd src
 - start server.py
 - start tanks.py for each client desired to play
+
+#### TODO
+- edit sprite sketches, add transparency
+- explode missles when they collide with each other
+- add screenshot of game here, in readme
