@@ -8,12 +8,12 @@ The simple multiplayer 2D tanks game in Python, developed with my kids.
 - pyyaml
 
 #### CONFIGURE
-See tanks.yaml
+See src/tanks.yaml
         
 #### USAGE
 - cd src
-- start server.py
-- start tanks.py for each client desired to play
+- run server.py
+- run tanks.py for each client that desires to play
 
 #### TODO
 - edit sprite sketches, add transparency
