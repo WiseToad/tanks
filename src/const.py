@@ -1,6 +1,4 @@
 class Const:
-    SERVER_ADDR = ("wisetoad-pc.local.toadnet.ru", 15505)
-    #SERVER_ADDR = ("localhost", 15505)
     RECV_BUF_SIZE = 4096
 
     MAX_PLAYERS = 4
