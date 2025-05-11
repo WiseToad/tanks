@@ -85,6 +85,19 @@ class Rect(namedtuple("Rect", ("pos", "size"), defaults=(Vector(), Vector()))):
     def lb(self) -> Vector: # left-bottom
         return Vector(self.pos.x, self.pos.y + self.size.y)
 
+    def __add__(self, other: Any) -> Self:
+        if isinstance(other, Vector):
+            return Rect(self.pos + other, self.size)
+        return NotImplemented
+
+    def __radd__(self, other: Any) -> Self:
+        return self.__add__(other)
+
+    def __mul__(self, other: Any) -> Self:
+        if isinstance(other, int):
+            return Rect(self.pos * other, self.size * other)
+        return NotImplemented
+
     def __contains__(self, other: Any) -> bool:
         if isinstance(other, Vector):
             corner = self.corner()

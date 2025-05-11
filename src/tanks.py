@@ -72,7 +72,7 @@ class Game:
         self.gameMapPos = Vector(0, infoBarHeight)
 
         screenSize = self.gameMapPos + self.gameMap.size * GameMap.BLOCK_SIZE
-        self.screen = pygame.display.set_mode(screenSize, pygame.HWSURFACE | pygame.DOUBLEBUF, vsync=1)
+        self.screen = pygame.display.set_mode(screenSize, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SCALED, vsync=1)
         
         self.clock = pygame.time.Clock()
 
@@ -205,11 +205,15 @@ class Game:
         self.screen.blit(text, pos)
         pos += Vector(0, text.get_height())
 
-        text = self.font.render(f"WINS: {tank.wins}  ", True, Color.GREEN)
+        text = self.font.render(f"H: {tank.health}  ", True, Color.YELLOW)
         self.screen.blit(text, pos)
         pos += Vector(text.get_width(), 0)
 
-        text = self.font.render(f"FAILS: {tank.fails}", True, Color.RED)
+        text = self.font.render(f"W: {tank.wins}  ", True, Color.GREEN)
+        self.screen.blit(text, pos)
+        pos += Vector(text.get_width(), 0)
+
+        text = self.font.render(f"D: {tank.fails}", True, Color.RED)
         self.screen.blit(text, pos)
 
     def drawGameMap(self):
@@ -248,9 +252,8 @@ class Game:
         self.drawImage(obj.getRect(), image)
 
     def drawImage(self, centeredTo: Rect, image: pygame.Surface):
-        rect = centeredTo.centered(Vector.ofTuple(image.get_size()))
-        pos = self.gameMapPos + rect.pos
-        self.screen.blit(image, image.get_rect(topleft=pos)) 
+        rect = self.gameMapPos + centeredTo.centered(Vector.ofTuple(image.get_size()))
+        self.screen.blit(image, rect.toTuple()) 
 
 if __name__ == "__main__":
     game = Game()

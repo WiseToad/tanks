@@ -20,4 +20,5 @@ See src/tanks.yaml
 - edit sprite sketches, add transparency
 - add screenshot of game here, in readme
 - tanks of different colors for different players
-- scale battlefield in windowed mode or make full screen mode?
+- add rebound blocks
+- fix comment vanishing in yaml after save, always save with unix-style line breaks

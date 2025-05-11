@@ -52,4 +52,4 @@ class GameMap(Serde):
 
     @staticmethod
     def getBlockRect(pos: Vector) -> Rect:
-        return Rect(pos * GameMap.BLOCK_SIZE, Vector(1, 1) * GameMap.BLOCK_SIZE)
+        return Rect(pos, Vector(1, 1)) * GameMap.BLOCK_SIZE
