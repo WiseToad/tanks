@@ -6,7 +6,7 @@ import os
 
 from const import Const, Color
 from config import Config
-from geometry import Direction, Pos, Dims
+from geometry import Direction, Vector
 from gamedata import *
 from images import Images
 from nameinput import NameInput
@@ -23,7 +23,7 @@ class Game:
     config: Config
 
     gameMap: GameMap
-    gameObjs: GameObjects
+    gameObjs: GameObjs
     gameControls: GameControls
     gameState: GameState
 
@@ -33,7 +33,8 @@ class Game:
 
     screen: pygame.Surface
     font: pygame.font.Font
-    infoBarHeight: int
+
+    gameMapPos: Vector
 
     nameInput: NameInput
     sendName: bool
@@ -47,7 +48,7 @@ class Game:
         self.config = Config(f"{SRC_DIR}/tanks.yaml")
 
         self.gameMap = GameMap()
-        self.gameObjs = GameObjects()
+        self.gameObjs = GameObjs()
         self.gameControls = GameControls()
 
         self.images = Images(f"{RESOURCE_DIR}/image")
@@ -65,16 +66,18 @@ class Game:
         pygame.display.set_caption("Multiplayer tanks")
 
         self.font = pygame.font.SysFont(Const.INFOBAR_FONT, Const.INFOBAR_FONT_SIZE, bold=True)
-        text = self.font.render("0", True, Color.GRAY)
-        self.infoBarHeight = text.get_height() * 2 + 4
 
-        screenSize = self.gameMap.size * GameMap.BLOCK_SIZE + Dims(0, self.infoBarHeight)
+        text = self.font.render("0", True, Color.GRAY)
+        infoBarHeight = text.get_height() * 2 + 4
+        self.gameMapPos = Vector(0, infoBarHeight)
+
+        screenSize = self.gameMapPos + self.gameMap.size * GameMap.BLOCK_SIZE
         self.screen = pygame.display.set_mode(screenSize, pygame.HWSURFACE | pygame.DOUBLEBUF, vsync=1)
         
         self.clock = pygame.time.Clock()
 
-        pos = (self.gameMap.size - NameInput.SIZE_IN_BLOCKS) // 2 * GameMap.BLOCK_SIZE + Pos(0, self.infoBarHeight)
-        self.nameInput = NameInput(self.screen, self.font, pos, self.config.get("playerName", "PLAYER"))
+        nameInputPos = self.gameMapPos + (self.gameMap.size * GameMap.BLOCK_SIZE - NameInput.SIZE) // 2
+        self.nameInput = NameInput(self.screen, self.font, nameInputPos, self.config.get("playerName", "PLAYER"))
         self.sendName = False
 
         self.gameState = GameState.NAME_INPUT
@@ -171,38 +174,40 @@ class Game:
         self.drawInfoBar()
         self.drawGameMap()
 
-        for tank in self.gameObjs.tanks.values():
+        for tank in self.gameObjs.tanks:
             self.drawTank(tank)
 
-        for missle in self.gameObjs.missles.values():
+        for missle in self.gameObjs.missles:
             self.drawDirectedObj(missle, self.images.missles)
 
-        for punch in self.gameObjs.punches.values():
+        for punch in self.gameObjs.punches:
             self.drawAnimatedObj(punch, self.images.punches)
 
-        for boom in self.gameObjs.booms.values():
+        for boom in self.gameObjs.booms:
             self.drawAnimatedObj(boom, self.images.booms)
 
         self.drawGameMapCamo()
-        self.drawNameEditor()
+
+        if self.gameState == GameState.NAME_INPUT:
+            self.nameInput.draw()
 
     def drawInfoBar(self):
-        statsPos = Pos(0, 0)
+        statsPos = Vector(0, 0)
         statsWidth = self.gameMap.size.x * GameMap.BLOCK_SIZE // 4
-        for tank in self.gameObjs.tanks.values():
+        for tank in self.gameObjs.tanks:
             self.drawTankStats(tank, statsPos)
-            statsPos += Pos(statsWidth, 0)
+            statsPos += Vector(statsWidth, 0)
 
-    def drawTankStats(self, tank: Tank, pos: Pos):
-        pos += Pos(2, 2)
+    def drawTankStats(self, tank: Tank, pos: Vector):
+        pos += Vector(2, 2)
 
         text = self.font.render(f"{tank.name.upper()}", True, Color.GRAY)
         self.screen.blit(text, pos)
-        pos += Pos(0, text.get_height())
+        pos += Vector(0, text.get_height())
 
         text = self.font.render(f"WINS: {tank.wins}  ", True, Color.GREEN)
         self.screen.blit(text, pos)
-        pos += Pos(text.get_width(), 0)
+        pos += Vector(text.get_width(), 0)
 
         text = self.font.render(f"FAILS: {tank.fails}", True, Color.RED)
         self.screen.blit(text, pos)
@@ -210,7 +215,7 @@ class Game:
     def drawGameMap(self):
         for i in range(self.gameMap.size.x):
             for j in range(self.gameMap.size.y):
-                block = self.gameMap.getBlock(i, j)
+                block = self.gameMap.getBlock(Vector(i, j))
                 if block in (" ", "x"):
                     self.drawMapBlock(i, j, self.images.ground)
                 elif block == "#":
@@ -223,34 +228,29 @@ class Game:
     def drawGameMapCamo(self):
         for i in range(self.gameMap.size.x):
             for j in range(self.gameMap.size.y):
-                block = self.gameMap.getBlock(i, j)
+                block = self.gameMap.getBlock(Vector(i, j))
                 if block == "x":
                     self.drawMapBlock(i, j, self.images.camo)
 
     def drawMapBlock(self, i: int, j: int, image: pygame.Surface):
-        self.drawImage(Box(Pos(i, j) * GameMap.BLOCK_SIZE, GameMap.BLOCK_SIZE), image)
+        self.drawImage(GameMap.getBlockRect(Vector(i, j)), image)
 
     def drawTank(self, tank: Tank):
         if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick // 2 % 6 != 0):
             self.drawDirectedObj(tank, self.images.tanks)
 
-    def drawDirectedObj(self, obj: DirectedObject, images: dict[Direction, pygame.Surface]):
+    def drawDirectedObj(self, obj: DirectedObj, images: dict[Direction, pygame.Surface]):
         image = images[obj.heading]
-        self.drawImage(obj.getBox(), image)
+        self.drawImage(obj.getRect(), image)
 
-    def drawAnimatedObj(self, obj: GameObject, images: list[pygame.Surface]):
-        image = images[int(obj.animTick / obj.ANIM_DELAY)]
-        self.drawImage(obj.getBox(), image)
+    def drawAnimatedObj(self, obj: GameObj, images: list[pygame.Surface]):
+        image = images[obj.getPhase()]
+        self.drawImage(obj.getRect(), image)
 
-    def drawImage(self, centeredTo: Box, image: pygame.Surface):
-        x = centeredTo.pos.x + (centeredTo.size - image.get_width()) // 2
-        y = centeredTo.pos.y + (centeredTo.size - image.get_height()) // 2 + self.infoBarHeight
-        rect = image.get_rect(topleft=(x, y))
-        self.screen.blit(image, rect)
-
-    def drawNameEditor(self):
-        if self.gameState == GameState.NAME_INPUT:
-            self.nameInput.draw()
+    def drawImage(self, centeredTo: Rect, image: pygame.Surface):
+        rect = centeredTo.centered(Vector.ofTuple(image.get_size()))
+        pos = self.gameMapPos + rect.pos
+        self.screen.blit(image, image.get_rect(topleft=pos)) 
 
 if __name__ == "__main__":
     game = Game()

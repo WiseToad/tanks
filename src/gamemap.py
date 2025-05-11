@@ -1,28 +1,29 @@
 from serde import Serde
-from geometry import Pos, Dims
+from geometry import Vector, Rect
 
 class GameMap(Serde):
     BLOCK_SIZE = 32
 
-    size: Dims
+    size: Vector
     blocks: list[str]
-    spawns: list[Pos]
+    spawns: list[Vector]
     version: int = 0
 
     __serde_fields__ = {"size", "blocks"}
 
     def __init__(self):
-        self.size = Dims()
-        self.blocks = []
-        self.spawns = []
+        self.clear()
 
-    def load(self, fileName):
-        width, height = 0, 0
-        self.size = Dims()
+    def clear(self):
+        self.size = Vector()
         self.blocks = []
         self.spawns = []
         self.version = 0
+
+    def load(self, fileName):
+        self.clear()
         with open(fileName, "r") as f:
+            width, height = 0, 0
             for line in f:
                 line = line.rstrip("\n")
                 line = line.replace("=", "4")
@@ -31,7 +32,7 @@ class GameMap(Serde):
                     i = line.find("*")
                     if i ==-1:
                         break
-                    self.spawns.append(Pos(x=i, y=height))
+                    self.spawns.append(Vector(x=i, y=height))
                     line = line[:i] + " " + line[(i + 1):]
 
                 self.blocks.append(line)
@@ -40,11 +41,15 @@ class GameMap(Serde):
                     width = len(line)
                 height += 1
             
-            self.size = Dims(width, height)
+            self.size = Vector(width, height)
 
-    def getBlock(self, i: int, j: int) -> str:
-        return self.blocks[j][i]
+    def getBlock(self, pos: Vector) -> str:
+        return self.blocks[pos.y][pos.x]
 
-    def setBlock(self, i: int, j: int, block: str):
-        row = self.blocks[j]
-        self.blocks[j] = row[:i] + block[0] + row[(i + 1):]
+    def setBlock(self, pos: Vector, block: str):
+        row = self.blocks[pos.y]
+        self.blocks[pos.y] = row[:pos.x] + block[0] + row[(pos.x + 1):]
+
+    @staticmethod
+    def getBlockRect(pos: Vector) -> Rect:
+        return Rect(pos * GameMap.BLOCK_SIZE, Vector(1, 1) * GameMap.BLOCK_SIZE)

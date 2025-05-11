@@ -18,5 +18,6 @@ See src/tanks.yaml
 
 #### TODO
 - edit sprite sketches, add transparency
-- explode missles when they collide with each other
 - add screenshot of game here, in readme
+- tanks of different colors for different players
+- scale battlefield in windowed mode or make full screen mode?

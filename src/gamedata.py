@@ -1,49 +1,50 @@
 from enum import Enum
-from typing import Any, Self, TypeVar
+from typing import Any, Self
 
 from const import Const
 from serde import Serde
-from geometry import Direction, Pos, Box
+from obj import Obj, ObjCollection
+from geometry import Direction, Vector, Rect
 from gamemap import GameMap
 
-class GameObject(Serde):
-    BOX_SIZE: int
-    ANIM_COUNT: int
-    ANIM_DELAY: int
+class GameObj(Obj):
+    SIZE: Vector
+    PHASE_COUNT: int = 0
+    PHASE_DURATION: int = 1
 
-    key: int
-    pos: Pos
-    animTick: int = 0
+    pos: Vector
+    phaseTick: int = 0
 
-    __serde_fields__ = {"key", "pos", "animTick"}
+    __serde_fields__ = {"key", "pos", "phaseTick"}
 
-    T = TypeVar("T", bound=Self)
+    def __init__(self, pos: Vector = None, *, centeredTo: Rect = None):
+        super().__init__()
+        if pos is not None:
+            self.pos = pos 
+        elif centeredTo is not None:
+            rect = centeredTo.centered(self.SIZE)
+            self.pos = rect.pos
+        else:
+            self.pos = Vector()
 
-    @classmethod
-    def centeredTo(cls, other: T, **kwArgs):
-        return cls.centeredToBox(other.getBox(), **kwArgs)
+    def getRect(self) -> Rect:
+        return Rect(self.pos, self.SIZE)
 
-    @classmethod
-    def centeredToBox(cls, box: Box, **kwArgs):
-        objBox = Box.centeredTo(box, cls.BOX_SIZE)
-        return cls(pos=objBox.pos, **kwArgs)
+    def nextPhase(self):
+        self.phaseTick = (self.phaseTick + 1) % (self.PHASE_COUNT * self.PHASE_DURATION)
 
-    def __init__(self, *, pos: Pos = None):
-        self.key = id(self)
-        self.pos = pos if pos is not None else Pos()
+    def getPhase(self) -> int:
+        return self.phaseTick // self.PHASE_DURATION % self.PHASE_COUNT if self.PHASE_COUNT else 0
 
-    def getBox(self) -> Box:
-        return Box(self.pos, self.BOX_SIZE)
-
-class DirectedObject(GameObject):
+class DirectedObj(GameObj):
     VELOCITY: int
 
     heading: Direction
 
-    __serde_fields__ = {"key", "pos", "heading"}
+    __serde_fields__ = {"key", "pos", "phaseTick", "heading"}
 
-    def __init__(self, *, pos: Pos = None, heading = Direction.UP):
-        super().__init__(pos=pos)
+    def __init__(self, pos: Vector = None, *, centeredTo: Rect = None, heading = Direction.UP):
+        super().__init__(pos, centeredTo=centeredTo)
         self.heading = heading
 
 class TankState(Enum):
@@ -51,8 +52,8 @@ class TankState(Enum):
     FIGHT = 2
     DEAD = 3
 
-class Tank(DirectedObject):
-    BOX_SIZE = 22
+class Tank(DirectedObj):
+    SIZE = Vector(22, 22)
     VELOCITY = 1
 
     INITIAL_HEALTH = 4
@@ -73,75 +74,61 @@ class Tank(DirectedObject):
 
     __serde_fields__ = {"key", "pos", "heading", "name", "state", "health", "fails", "wins"}
 
-class Missle(DirectedObject):
-    BOX_SIZE = 8
+class Missle(DirectedObj):
+    SIZE = Vector(8, 8)
     VELOCITY = 6
 
     tankKey: int
     lethal: bool
 
-    @classmethod
-    def ofTank(cls, tank: Tank) -> Self:
-        self = Missle.centeredTo(tank, heading=tank.heading, tankKey=tank.key, lethal=(tank.state == TankState.FIGHT))
+    def __init__(self, tank: Tank):
+        super().__init__(centeredTo=tank.getRect(), heading=tank.heading)
 
-        offset = (Tank.BOX_SIZE + Missle.BOX_SIZE) // 2
-        self.pos = self.pos.move(tank.heading, offset)
+        offset = (Tank.SIZE + Missle.SIZE) // 2
+        match tank.heading:
+            case Direction.LEFT:
+                self.pos -= Vector(x=offset.x)
+            case Direction.RIGHT:
+                self.pos += Vector(x=offset.x)
+            case Direction.UP:
+                self.pos -= Vector(y=offset.y)
+            case Direction.DOWN:
+                self.pos += Vector(y=offset.y)
 
-        return self
-    
-    def __init__(self, *, pos: Pos = None, heading = Direction.UP, tankKey: int, lethal: bool = True):
-        super().__init__(pos=pos, heading=heading)
-        self.tankKey = tankKey
-        self.lethal = lethal
+        self.tankKey = tank.key
+        self.lethal = (tank.state == TankState.FIGHT)
 
-class Punch(GameObject):
-    BOX_SIZE = 16
-    ANIM_COUNT = 1
-    ANIM_DELAY = 8
+class Punch(GameObj):
+    SIZE = Vector(16, 16)
+    PHASE_COUNT = 1
+    PHASE_DURATION = 8
 
-class Boom(GameObject):
-    BOX_SIZE = 32
-    ANIM_COUNT = 4
-    ANIM_DELAY = 8
+class Boom(GameObj):
+    SIZE = Vector(32, 32)
+    PHASE_COUNT = 4
+    PHASE_DURATION = 8
 
-class GameDict(dict[int, GameObject.T]):
-    @classmethod
-    def ofList(cls, data: list[Any], objType: type[GameObject.T]) -> Self:
-        self = cls()
-        self.update({obj.key: obj for obj in (objType.ofDict(datum) for datum in data)})
-        return self
-
-    def toList(self) -> list[Any]:
-        return list(self.values())
-
-    def add(self, obj: GameObject.T):
-        self[obj.key] = obj
-
-    def remove(self, *objs: GameObject.T):
-        for obj in objs:
-            self.pop(obj.key, None)
-
-class GameObjects(Serde):
-    tanks: GameDict[Tank]
-    missles: GameDict[Missle]
-    punches: GameDict[Punch]
-    booms: GameDict[Boom]
+class GameObjs(Serde):
+    tanks: ObjCollection[Tank]
+    missles: ObjCollection[Missle]
+    punches: ObjCollection[Punch]
+    booms: ObjCollection[Boom]
 
     __serde_fields__ = {"tanks", "missles", "punches", "booms"}
 
     def __init__(self):
-        self.tanks = GameDict()
-        self.missles = GameDict()
-        self.punches = GameDict()
-        self.booms = GameDict()
+        self.tanks = ObjCollection()
+        self.missles = ObjCollection()
+        self.punches = ObjCollection()
+        self.booms = ObjCollection()
 
     @classmethod
     def ofDict(cls, data: dict[str, Any]) -> Self:
         self = cls.__new__(cls)
-        self.tanks = GameDict.ofList(data["tanks"], Tank)
-        self.missles = GameDict.ofList(data["missles"], Missle)
-        self.punches = GameDict.ofList(data["punches"], Punch)
-        self.booms = GameDict.ofList(data["booms"], Boom)
+        self.tanks = ObjCollection.ofList(data["tanks"], Tank)
+        self.missles = ObjCollection.ofList(data["missles"], Missle)
+        self.punches = ObjCollection.ofList(data["punches"], Punch)
+        self.booms = ObjCollection.ofList(data["booms"], Boom)
         return self
 
     def toDict(self) -> dict[str, Any]:
@@ -160,11 +147,11 @@ class GameControls(Serde):
 
 class ServerData(Serde):
     gameMap: GameMap = None
-    gameObjs: GameObjects
+    gameObjs: GameObjs
 
     __serde_fields__ = {"gameObjs", "gameMap"}
 
-    def __init__(self, *, gameObjs: GameObjects):
+    def __init__(self, *, gameObjs: ObjCollection):
         self.gameObjs = gameObjs
 
 class ClientData(Serde):
@@ -175,4 +162,3 @@ class ClientData(Serde):
 
     def __init__(self, *, gameControls: GameControls = None):
         self.gameControls = gameControls
-

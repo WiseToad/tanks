@@ -32,7 +32,7 @@ class Client:
         self.conn.send(toBytes(gameMap))
         self.mapVersion = gameMap.version
 
-    def sendServerData(self, gameMap: GameMap, gameObjs: GameObjects):
+    def sendServerData(self, gameMap: GameMap, gameObjs: GameObjs):
         data = ServerData(gameObjs=gameObjs)
         if gameMap.version > self.mapVersion:
             data.gameMap = gameMap
@@ -56,7 +56,7 @@ class Server:
     config: Config
 
     gameMap: GameMap
-    gameObjs: GameObjects
+    gameObjs: GameObjs
 
     lock: Lock
     running: bool
@@ -65,7 +65,7 @@ class Server:
         self.config = Config(f"{SRC_DIR}/tanks.yaml")
 
         self.gameMap = GameMap()
-        self.gameObjs = GameObjects()
+        self.gameObjs = GameObjs()
         self.lock = Lock()
 
     def run(self):
@@ -142,15 +142,15 @@ class Server:
         if client.gameControls.dir is not None:
             self.moveObject(client.tank, True, client.gameControls.dir)
         
-        if client.gameControls.fire and client.tank.missleTick > Tank.MISSLE_DELAY:
+        if client.gameControls.fire:
             self.shootMissle(client.tank)
 
-    def findFreeSpawn(self) -> Pos:
+    def findFreeSpawn(self) -> Vector:
         spawns = []
         for spawn in self.gameMap.spawns:
-            spawnBox = Box(spawn * GameMap.BLOCK_SIZE, GameMap.BLOCK_SIZE)
-            for tank in self.gameObjs.tanks.values():
-                if tank.state == TankState.DEAD or not spawnBox.intersects(tank.getBox()):
+            rect = GameMap.getBlockRect(spawn)
+            for tank in self.gameObjs.tanks:
+                if tank.state == TankState.DEAD or not rect.intersects(tank.getRect()):
                     spawns.append(spawn)
 
         if not spawns:
@@ -159,25 +159,35 @@ class Server:
         spawnIdx = randint(0, len(spawns) - 1)
         return spawns[spawnIdx]
 
-    def moveObject(self, obj: DirectedObject, considerWater: bool, dir: Direction = None) -> tuple[int, int] | GameObject | None:
+    def moveObject(self, obj: DirectedObj, considerWater: bool, dir: Direction = None) -> tuple[int, int] | GameObj | None:
         if dir is not None and dir != obj.heading:
             obj.heading = dir
             return None
 
-        pos = obj.pos.move(obj.heading, obj.VELOCITY)
+        pos = obj.pos
         match obj.heading:
             case Direction.LEFT:
-                p1 = Pos(pos.x, pos.y)
-                p2 = Pos(pos.x, pos.y + obj.BOX_SIZE - 1)
+                pos -= Vector(x=obj.VELOCITY)
             case Direction.RIGHT:
-                p1 = Pos(pos.x + obj.BOX_SIZE - 1, pos.y)
-                p2 = Pos(pos.x + obj.BOX_SIZE - 1, pos.y + obj.BOX_SIZE - 1)
+                pos += Vector(x=obj.VELOCITY)
             case Direction.UP:
-                p1 = Pos(pos.x, pos.y)
-                p2 = Pos(pos.x + obj.BOX_SIZE - 1, pos.y)
+                pos -= Vector(y=obj.VELOCITY)
             case Direction.DOWN:
-                p1 = Pos(pos.x, pos.y + obj.BOX_SIZE - 1)
-                p2 = Pos(pos.x + obj.BOX_SIZE - 1, pos.y + obj.BOX_SIZE - 1)
+                pos += Vector(y=obj.VELOCITY)
+
+        match obj.heading:
+            case Direction.LEFT:
+                p1 = Vector(pos.x, pos.y)
+                p2 = Vector(pos.x, pos.y + obj.SIZE.y - 1)
+            case Direction.RIGHT:
+                p1 = Vector(pos.x + obj.SIZE.x - 1, pos.y)
+                p2 = Vector(pos.x + obj.SIZE.x - 1, pos.y + obj.SIZE.y - 1)
+            case Direction.UP:
+                p1 = Vector(pos.x, pos.y)
+                p2 = Vector(pos.x + obj.SIZE.x - 1, pos.y)
+            case Direction.DOWN:
+                p1 = Vector(pos.x, pos.y + obj.SIZE.y - 1)
+                p2 = Vector(pos.x + obj.SIZE.x - 1, pos.y + obj.SIZE.y - 1)
 
         collided = self.checkCollision(p1, considerWater)
         if collided is None:
@@ -188,29 +198,34 @@ class Server:
         obj.pos = pos
         return None
 
-    def checkCollision(self, pos: Pos, considerWater: bool) -> Pos | GameObject:
-        i = pos.x // GameMap.BLOCK_SIZE
-        j = pos.y // GameMap.BLOCK_SIZE
-        block = self.gameMap.getBlock(i, j)
+    def checkCollision(self, pos: Vector, considerWater: bool) -> Vector | GameObj:
+        blockPos = pos // GameMap.BLOCK_SIZE
+        block = self.gameMap.getBlock(blockPos)
         if block in ("#", "1", "2", "3", "4") or (considerWater and block == "~"):
-            return Pos(i, j)
+            return blockPos
         
-        collided = self.getObjectAt(pos, self.gameObjs.tanks)
+        collided = self.getObjectAtPos(pos, self.gameObjs.tanks)
         if collided is not None and collided.state != TankState.DEAD:
             return collided
         
         return None
 
-    def getObjectAt(self, pos: Pos, objs: GameDict[GameObject.T]) -> GameObject.T:
-        for obj in objs.values():
-            if pos in obj.getBox():
+    def getObjectAtPos(self, pos: Vector, objs: ObjCollection[Obj.T]) -> Obj.T:
+        for obj in objs:
+            if pos in obj.getRect():
                 return obj
         return None
 
+    def getObjectInBox(self, o: GameObj, objs: ObjCollection[Obj.T]) -> Obj.T:
+        rect = o.getRect()
+        for obj in objs:
+            if o.key != obj.key and rect.intersects(obj.getRect()):
+                return obj
+
     def shootMissle(self, tank: Tank) -> Missle:
-        missle = Missle.ofTank(tank)
-        self.gameObjs.missles.add(missle)
-        tank.missleTick = 0
+        if tank.state != TankState.DEAD and tank.missleTick > Tank.MISSLE_DELAY:
+            self.gameObjs.missles.add(Missle(tank))
+            tank.missleTick = 0
 
     def runGame(self):
         self.gameMap.load(f"{RESOURCE_DIR}/map/map.txt")
@@ -224,13 +239,13 @@ class Server:
         try:
             self.handleTanks()
             self.moveMissles()
-            self.animateObjects(self.gameObjs.punches)
-            self.animateObjects(self.gameObjs.booms)
+            self.animateObjects(self.gameObjs.punches, oneShot=True)
+            self.animateObjects(self.gameObjs.booms, oneShot=True)
         finally:
             self.lock.release()
 
     def handleTanks(self):
-        for tank in self.gameObjs.tanks.values():
+        for tank in self.gameObjs.tanks:
             tank.stateTick += 1
             tank.missleTick += 1
             match tank.state:
@@ -244,8 +259,8 @@ class Server:
 
     def spawnTank(self, tank: Tank):
         spawn = self.findFreeSpawn()
-        tankBox = Box.centeredTo(Box(spawn * GameMap.BLOCK_SIZE, GameMap.BLOCK_SIZE), Tank.BOX_SIZE)
-        tank.pos = tankBox.pos
+        rect = GameMap.getBlockRect(spawn).centered(Tank.SIZE)
+        tank.pos = rect.pos
         tank.heading = Direction.UP
 
         tank.state = TankState.START
@@ -254,20 +269,28 @@ class Server:
 
         tank.health = Tank.INITIAL_HEALTH
 
+    #TODO: refactor this ugly bloated code below
     def moveMissles(self):
-        removed = []
-        for missle in self.gameObjs.missles.values():
+        for missle in self.gameObjs.missles:
             collided = self.moveObject(missle, False)
-            if collided is not None:
-                self.gameObjs.punches.add(Punch.centeredTo(missle))
-                removed.append(missle)
+            if collided is None:
+                m = self.getObjectInBox(missle, self.gameObjs.missles)
+                if m is not None:
+                    rect = missle.getRect().union(m.getRect())
+                    self.gameObjs.punches.add(Punch(centeredTo=rect))
+                    self.gameObjs.missles.remove(missle, lazy=True)
+                    self.gameObjs.missles.remove(m, lazy=True)
+
+            else:
+                self.gameObjs.punches.add(Punch(centeredTo=missle.getRect()))
+                self.gameObjs.missles.remove(missle, lazy=True)
 
                 if missle.lethal:
                     if isinstance(collided, Tank):
                         if collided.state == TankState.FIGHT:
                             collided.health -= 1
                             if collided.health == 0:
-                                self.gameObjs.booms.add(Boom.centeredTo(collided))
+                                self.gameObjs.booms.add(Boom(centeredTo=collided.getRect()))
                                 collided.state = TankState.DEAD
                                 collided.stateTick = 0
 
@@ -276,27 +299,25 @@ class Server:
                                 if winner is not None:
                                     winner.wins += 1
 
-                    if isinstance(collided, tuple):
-                        i, j = collided
-                        block = self.gameMap.getBlock(i, j)
+                    if isinstance(collided, Vector): # collided with GameMap block
+                        block = self.gameMap.getBlock(collided)
                         if block in ("1", "2", "3", "4"):
                             block = str(int(block) - 1)
                             if block == "0":
                                 block = " "
-                                self.gameObjs.booms.add(Boom.centeredToBox(Box(Pos(i, j) * GameMap.BLOCK_SIZE, GameMap.BLOCK_SIZE)))
+                                self.gameObjs.booms.add(Boom(centeredTo=GameMap.getBlockRect(collided)))
 
-                            self.gameMap.setBlock(i, j, block)
+                            self.gameMap.setBlock(collided, block)
                             self.gameMap.version += 1
 
-        self.gameObjs.missles.remove(*removed)
+        self.gameObjs.missles.purge()
 
-    def animateObjects(self, objs: GameDict[GameObject]):
-        removed = []
-        for obj in objs.values():
-            obj.animTick += 1
-            if obj.animTick >= obj.ANIM_COUNT * obj.ANIM_DELAY:
-                removed.append(obj)
-        objs.remove(*removed)
+    def animateObjects(self, objs: ObjCollection[GameObj], oneShot: bool = False):
+        for obj in objs:
+            obj.nextPhase()
+            if oneShot and obj.phaseTick == 0:
+                objs.remove(obj, lazy=True)
+        objs.purge()
 
 if __name__ == "__main__":
     server = Server()

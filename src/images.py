@@ -9,7 +9,7 @@ class Images:
     bricks: list[pygame.Surface]
     tanks: dict[Direction, pygame.Surface]
     missles: dict[Direction, pygame.Surface]
-    # punches: list[pygame.Surface]
+    punches: list[pygame.Surface]
     booms: list[pygame.Surface]
 
     def __init__(self, imageDir: str):
