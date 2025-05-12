@@ -281,6 +281,17 @@ class Server:
                     self.gameObjs.missles.remove(missle, lazy=True)
                     self.gameObjs.missles.remove(m, lazy=True)
 
+            elif isinstance(collided, Vector) and self.gameMap.getBlock(collided) in GameMap.TOWER:
+                match missle.heading:
+                    case Direction.LEFT:
+                        missle.heading = Direction.RIGHT
+                    case Direction.RIGHT:
+                        missle.heading = Direction.LEFT
+                    case Direction.UP:
+                        missle.heading = Direction.DOWN
+                    case Direction.DOWN:
+                        missle.heading = Direction.UP
+
             else:
                 self.gameObjs.punches.add(Punch(centeredTo=missle.getRect()))
                 self.gameObjs.missles.remove(missle, lazy=True)
@@ -295,9 +306,12 @@ class Server:
                                 collided.stateTick = 0
 
                                 collided.fails += 1
-                                winner = self.gameObjs.tanks.get(missle.tankKey)
-                                if winner is not None:
-                                    winner.wins += 1
+                                if missle.tankKey == collided.key:
+                                    collided.wins -= 1
+                                else:
+                                    winner = self.gameObjs.tanks.get(missle.tankKey)
+                                    if winner is not None:
+                                        winner.wins += 1
 
                     if isinstance(collided, Vector): # collided with GameMap block
                         block = self.gameMap.getBlock(collided)
