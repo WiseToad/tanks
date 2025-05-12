@@ -219,25 +219,33 @@ class Game:
     def drawGameMap(self):
         for i in range(self.gameMap.size.x):
             for j in range(self.gameMap.size.y):
-                block = self.gameMap.getBlock(Vector(i, j))
-                if block in (" ", "x"):
-                    self.drawMapBlock(i, j, self.images.ground)
-                elif block == "#":
-                    self.drawMapBlock(i, j, self.images.concrete)
-                elif block == "~":
-                    self.drawMapBlock(i, j, self.images.waters[self.tick // 16 % 2])
-                elif block in ("1", "2", "3", "4"):
-                    self.drawMapBlock(i, j, self.images.bricks[int(block) - 1])
+                pos = Vector(i, j)
+                block = self.gameMap.getBlock(pos)
+
+                image = None
+                if block in GameMap.GROUND + GameMap.CAMO + GameMap.SPAWN:
+                    image = self.images.ground
+                elif block in GameMap.CONCRETE:
+                    image = self.images.concrete
+                elif block in GameMap.BRICKS:
+                    phase = GameMap.BRICKS.find(block)
+                    image = self.images.bricks[phase]
+                elif block in GameMap.TOWER:
+                    image = self.images.tower
+                elif block in GameMap.WATER:
+                    phase = self.tick // 16 % 2
+                    image = self.images.waters[phase]
+
+                if image is not None:
+                    self.drawImage(GameMap.getBlockRect(pos), image)
 
     def drawGameMapCamo(self):
         for i in range(self.gameMap.size.x):
             for j in range(self.gameMap.size.y):
-                block = self.gameMap.getBlock(Vector(i, j))
-                if block == "x":
-                    self.drawMapBlock(i, j, self.images.camo)
-
-    def drawMapBlock(self, i: int, j: int, image: pygame.Surface):
-        self.drawImage(GameMap.getBlockRect(Vector(i, j)), image)
+                pos = Vector(i, j)
+                block = self.gameMap.getBlock(pos)
+                if block in GameMap.CAMO:
+                    self.drawImage(GameMap.getBlockRect(pos), self.images.camo)
 
     def drawTank(self, tank: Tank):
         if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick // 2 % 6 != 0):

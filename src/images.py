@@ -7,6 +7,10 @@ class Images:
     ground: pygame.Surface
     concrete: pygame.Surface
     bricks: list[pygame.Surface]
+    tower: pygame.Surface
+    waters: list[pygame.Surface]
+    camo: pygame.Surface
+
     tanks: dict[Direction, pygame.Surface]
     missles: dict[Direction, pygame.Surface]
     punches: list[pygame.Surface]
@@ -16,8 +20,10 @@ class Images:
         self.ground = self.loadImage(imageDir, "ground")
         self.concrete = self.loadImage(imageDir, "concrete")
         self.bricks = self.loadImages(imageDir, "bricks-1", "bricks-2", "bricks-3", "bricks-4")
+        self.tower = self.loadImage(imageDir, "tower")
         self.waters = self.loadImages(imageDir, "water-1", "water-2")
         self.camo = self.loadImage(imageDir, "camo")
+
         self.tanks = self.loadForEnum(imageDir, "tank", Direction)
         self.missles = self.loadForEnum(imageDir, "missle", Direction)
         self.punches = self.loadImages(imageDir, "punch-1")

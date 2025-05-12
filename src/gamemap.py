@@ -11,6 +11,14 @@ class GameMap(Serde):
 
     __serde_fields__ = {"size", "blocks"}
 
+    GROUND = " "
+    CONCRETE = "#"
+    BRICKS = "=123"
+    TOWER = "+"
+    WATER = "~"
+    CAMO = "x"
+    SPAWN = "*"
+
     def __init__(self):
         self.clear()
 
@@ -26,14 +34,14 @@ class GameMap(Serde):
             width, height = 0, 0
             for line in f:
                 line = line.rstrip("\n")
-                line = line.replace("=", "4")
 
+                p = 0
                 while True:
-                    i = line.find("*")
-                    if i ==-1:
+                    i = line.find(self.SPAWN, p)
+                    if i == -1:
                         break
                     self.spawns.append(Vector(x=i, y=height))
-                    line = line[:i] + " " + line[(i + 1):]
+                    p = i + 1
 
                 self.blocks.append(line)
 

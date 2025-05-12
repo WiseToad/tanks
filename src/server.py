@@ -201,7 +201,7 @@ class Server:
     def checkCollision(self, pos: Vector, considerWater: bool) -> Vector | GameObj:
         blockPos = pos // GameMap.BLOCK_SIZE
         block = self.gameMap.getBlock(blockPos)
-        if block in ("#", "1", "2", "3", "4") or (considerWater and block == "~"):
+        if block in GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER or (considerWater and block in GameMap.WATER):
             return blockPos
         
         collided = self.getObjectAtPos(pos, self.gameObjs.tanks)
@@ -301,11 +301,13 @@ class Server:
 
                     if isinstance(collided, Vector): # collided with GameMap block
                         block = self.gameMap.getBlock(collided)
-                        if block in ("1", "2", "3", "4"):
-                            block = str(int(block) - 1)
-                            if block == "0":
-                                block = " "
+                        if block in GameMap.BRICKS:
+                            phase = GameMap.BRICKS.find(block) + 1
+                            if phase >= len(GameMap.BRICKS):
+                                block = GameMap.GROUND
                                 self.gameObjs.booms.add(Boom(centeredTo=GameMap.getBlockRect(collided)))
+                            else:
+                                block = GameMap.BRICKS[phase]
 
                             self.gameMap.setBlock(collided, block)
                             self.gameMap.version += 1
