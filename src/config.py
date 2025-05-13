@@ -1,30 +1,30 @@
 from typing import Any
-import yaml
+from ruamel.yaml import YAML
 
 class Config:
-    __data: dict[str, Any]
-
     def __init__(self, fileName: str = None):
-        self.__data = {}
+        self.data = {}
         if fileName is not None:
             self.load(fileName)
 
     def load(self, fileName: str):
-        self.__data = {}
+        yaml = YAML()
+        self.data = {}
         try:
             with open(fileName, "r", encoding="utf8") as f:
-                self.__data = yaml.safe_load(f)
-            if self.__data is None:
-                self.__data = {}
+                self.data = yaml.load(f)
+            if self.data is None:
+                self.data = {}
         except FileNotFoundError:
             pass
 
     def save(self, fileName: str):
-        with open(fileName, "w", encoding="utf8") as f:
-            yaml.safe_dump(self.__data, f, sort_keys=False, default_flow_style=False, allow_unicode=True)
+        yaml = YAML()
+        with open(fileName, "w", encoding="utf8", newline="\n") as f:
+            yaml.dump(self.data, f)
 
     def get(self, key: str, default: Any = None) -> Any:
-        return self.__data.get(key, default)
+        return self.data.get(key, default)
 
     def put(self, key: str, value: Any):
-        self.__data[key] = value
+        self.data[key] = value

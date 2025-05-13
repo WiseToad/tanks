@@ -248,7 +248,7 @@ class Game:
                     self.drawImage(GameMap.getBlockRect(pos), self.images.camo)
 
     def drawTank(self, tank: Tank):
-        if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick // 2 % 6 != 0):
+        if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick // 2 % 2 != 0):
             self.drawDirectedObj(tank, self.images.tanks)
 
     def drawDirectedObj(self, obj: DirectedObj, images: dict[Direction, pygame.Surface]):
