@@ -104,3 +104,25 @@ class Rect(namedtuple("Rect", ("pos", "size"), defaults=(Vector(), Vector()))):
             return other.x >= self.pos.x and other.x < corner.x and \
                     other.y >= self.pos.y and other.y < corner.y
         return NotImplemented
+
+def reverseDir(dir: Direction) -> Direction:
+    match dir:
+        case Direction.LEFT:
+            return Direction.RIGHT
+        case Direction.RIGHT:
+            return Direction.LEFT
+        case Direction.UP:
+            return Direction.DOWN
+        case Direction.DOWN:
+            return Direction.UP
+
+def movePos(pos: Vector, dir: Direction, offset: int) -> Vector:
+    match dir:
+        case Direction.LEFT:
+            return pos - Vector(x=offset)
+        case Direction.RIGHT:
+            return pos + Vector(x=offset)
+        case Direction.UP:
+            return pos - Vector(y=offset)
+        case Direction.DOWN:
+            return pos + Vector(y=offset)

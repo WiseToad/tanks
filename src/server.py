@@ -9,6 +9,7 @@ import os
 from const import Const
 from config import Config
 from gamedata import *
+from geometry import movePos, reverseDir 
 from bytecodec import toBytes, ofBytes
 
 SRC_DIR = os.path.normpath(os.path.dirname(__file__))
@@ -60,6 +61,9 @@ class Server:
 
     lock: Lock
     running: bool
+
+    TANK_OBSTACLES = GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER + GameMap.WATER
+    MISSLE_OBSTACLES = GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER
 
     def __init__(self):
         self.config = Config(f"{SRC_DIR}/tanks.yaml")
@@ -140,7 +144,7 @@ class Server:
 
     def handleGameControls(self, client: Client):
         if client.gameControls.dir is not None:
-            self.moveObject(client.tank, True, client.gameControls.dir)
+            self.moveObject(client.tank, self.TANK_OBSTACLES, client.gameControls.dir)
         
         if client.gameControls.fire:
             self.shootMissle(client.tank)
@@ -159,68 +163,44 @@ class Server:
         spawnIdx = randint(0, len(spawns) - 1)
         return spawns[spawnIdx]
 
-    def moveObject(self, obj: DirectedObj, considerWater: bool, dir: Direction = None) -> tuple[int, int] | GameObj | None:
+    def moveObject(self, obj: DirectedObj, obstacles: str, dir: Direction = None) -> Vector | GameObj | None:
         if dir is not None and dir != obj.heading:
             obj.heading = dir
             return None
 
-        pos = obj.pos
-        match obj.heading:
-            case Direction.LEFT:
-                pos -= Vector(x=obj.VELOCITY)
-            case Direction.RIGHT:
-                pos += Vector(x=obj.VELOCITY)
-            case Direction.UP:
-                pos -= Vector(y=obj.VELOCITY)
-            case Direction.DOWN:
-                pos += Vector(y=obj.VELOCITY)
+        newPos = movePos(obj.pos, obj.heading, obj.VELOCITY)
 
-        match obj.heading:
-            case Direction.LEFT:
-                p1 = Vector(pos.x, pos.y)
-                p2 = Vector(pos.x, pos.y + obj.SIZE.y - 1)
-            case Direction.RIGHT:
-                p1 = Vector(pos.x + obj.SIZE.x - 1, pos.y)
-                p2 = Vector(pos.x + obj.SIZE.x - 1, pos.y + obj.SIZE.y - 1)
-            case Direction.UP:
-                p1 = Vector(pos.x, pos.y)
-                p2 = Vector(pos.x + obj.SIZE.x - 1, pos.y)
-            case Direction.DOWN:
-                p1 = Vector(pos.x, pos.y + obj.SIZE.y - 1)
-                p2 = Vector(pos.x + obj.SIZE.x - 1, pos.y + obj.SIZE.y - 1)
+        checkCorner = newPos + obj.SIZE - Vector(1, 1)
+        checkPts = newPos, Vector(checkCorner.x, newPos.y), checkCorner, Vector(newPos.x, checkCorner.y)
 
-        collided = self.checkCollision(p1, considerWater)
-        if collided is None:
-            collided = self.checkCollision(p2, considerWater)
-        if collided is not None:
-            return collided
-        
-        obj.pos = pos
+        rect = obj.getRect()
+        for pt in checkPts:
+            if pt not in rect:
+                collided = self.checkCollision(pt, obstacles)
+                if collided is not None:
+                    return collided
+
+        obj.pos = newPos
         return None
 
-    def checkCollision(self, pos: Vector, considerWater: bool) -> Vector | GameObj:
+    def checkCollision(self, pos: Vector, obstacles: str) -> Vector | GameObj | None:
         blockPos = pos // GameMap.BLOCK_SIZE
         block = self.gameMap.getBlock(blockPos)
-        if block in GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER or (considerWater and block in GameMap.WATER):
+        if block in obstacles:
             return blockPos
         
-        collided = self.getObjectAtPos(pos, self.gameObjs.tanks)
-        if collided is not None and collided.state != TankState.DEAD:
-            return collided
+        tank = self.getObjectAtPos(pos, self.gameObjs.tanks)
+        if tank is not None and tank.state != TankState.DEAD:
+            return tank
         
         return None
 
     def getObjectAtPos(self, pos: Vector, objs: ObjCollection[Obj.T]) -> Obj.T:
-        for obj in objs:
-            if pos in obj.getRect():
-                return obj
-        return None
+        return next((o for o in objs if pos in o.getRect()), None)
 
-    def getObjectInBox(self, o: GameObj, objs: ObjCollection[Obj.T]) -> Obj.T:
-        rect = o.getRect()
-        for obj in objs:
-            if o.key != obj.key and rect.intersects(obj.getRect()):
-                return obj
+    def getOverlappedObj(self, obj: GameObj, objs: ObjCollection[Obj.T]) -> Obj.T:
+        rect = obj.getRect()
+        return next((o for o in objs if o.key != obj.key and rect.intersects(o.getRect())), None)
 
     def shootMissle(self, tank: Tank) -> Missle:
         if tank.state != TankState.DEAD and tank.missleTick > Tank.MISSLE_DELAY:
@@ -272,9 +252,9 @@ class Server:
     #TODO: refactor this ugly bloated code below
     def moveMissles(self):
         for missle in self.gameObjs.missles:
-            collided = self.moveObject(missle, False)
+            collided = self.moveObject(missle, self.MISSLE_OBSTACLES)
             if collided is None:
-                m = self.getObjectInBox(missle, self.gameObjs.missles)
+                m = self.getOverlappedObj(missle, self.gameObjs.missles)
                 if m is not None:
                     rect = missle.getRect().union(m.getRect())
                     self.gameObjs.punches.add(Punch(centeredTo=rect))
@@ -282,15 +262,7 @@ class Server:
                     self.gameObjs.missles.remove(m, lazy=True)
 
             elif isinstance(collided, Vector) and self.gameMap.getBlock(collided) in GameMap.TOWER:
-                match missle.heading:
-                    case Direction.LEFT:
-                        missle.heading = Direction.RIGHT
-                    case Direction.RIGHT:
-                        missle.heading = Direction.LEFT
-                    case Direction.UP:
-                        missle.heading = Direction.DOWN
-                    case Direction.DOWN:
-                        missle.heading = Direction.UP
+                missle.heading = reverseDir(missle.heading)
 
             else:
                 self.gameObjs.punches.add(Punch(centeredTo=missle.getRect()))
