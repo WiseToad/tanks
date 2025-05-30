@@ -91,7 +91,7 @@ class GameCore(RetroCore):
         self.nameInput = NameInput(self.surface, self.font, nameInputPos, self.config.get("player.name", "PLAYER"))
 
         self.joypadState = set()
-        self.joypadPressed = set()
+        self.joypadStateBefore = set()
 
         self.tick = 0
 
@@ -107,18 +107,19 @@ class GameCore(RetroCore):
     def joypadEvent(self, num: int, button: int, pressed: bool):
         if num != 0:
             return
-        oldState = self.joypadState.copy()
         if pressed:
             self.joypadState.add(button)
         else:
             self.joypadState.discard(button)
-        self.joypadPressed = self.joypadState - oldState
 
     def keyboardEvent(self, keycode: int, pressed: bool, character: int, modifiers: int):
         if self.gameState == GameState.NAME_INPUT:
             self.nameInput.keyboardEvent(keycode, pressed, character, modifiers)
 
     def handleHidState(self):
+        joypadPressed = self.joypadState - self.joypadStateBefore
+        self.joypadStateBefore = self.joypadState.copy()
+
         match self.gameState:
             case GameState.NAME_INPUT:
                 if self.nameInput.finished:
@@ -129,7 +130,7 @@ class GameCore(RetroCore):
                     self.gameState = GameState.PLAY
 
             case GameState.PLAY:
-                if RetroKey.JOYPAD_A in self.joypadPressed:
+                if RetroKey.JOYPAD_A in joypadPressed:
                     self.gameControls.fire = True
 
                 self.gameControls.dir = None

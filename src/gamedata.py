@@ -54,7 +54,7 @@ class TankState(Enum):
 
 class Tank(DirectedObj):
     SIZE = Vector(22, 22)
-    VELOCITY = 2
+    VELOCITY = 1
 
     INITIAL_HEALTH = 4
     START_DURATION = 2 * Const.FPS

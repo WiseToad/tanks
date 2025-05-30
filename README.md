@@ -13,7 +13,11 @@ The simple multiplayer 2D tanks game in Python, developed with my kids.
   It's a pity that Debian Bookworm and Raspi OS are delaying to get to Py 12+ so my generics are not so nice in the code as I would wish
 
 #### REQUIREMENTS
+Python modules:
 - pygame
+- configobj
+
+To meet these requirements do either `pip install ...` (Windows and so) or `apt install python3-...` (Ubuntu and so)
 
 #### CONFIGURE
 See tanks.conf
