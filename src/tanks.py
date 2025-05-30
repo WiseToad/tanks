@@ -105,6 +105,8 @@ class GameCore(RetroCore):
         return super().nextFrame()
 
     def joypadEvent(self, num: int, button: int, pressed: bool):
+        if num != 0:
+            return
         oldState = self.joypadState.copy()
         if pressed:
             self.joypadState.add(button)
