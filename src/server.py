@@ -13,7 +13,8 @@ from geometry import movePos, reverseDir
 from bytecodec import toBytes, ofBytes
 
 SRC_DIR = os.path.normpath(os.path.dirname(__file__))
-RESOURCE_DIR = os.path.normpath(f"{SRC_DIR}/../resource")
+PROJECT_DIR=os.path.normpath(f"{SRC_DIR}/..")
+RESOURCE_DIR = os.path.normpath(f"{PROJECT_DIR}/resource")
 
 class Client:
     conn: socket
@@ -66,7 +67,7 @@ class Server:
     MISSLE_OBSTACLES = GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER
 
     def __init__(self):
-        self.config = Config(f"{SRC_DIR}/tanks.conf")
+        self.config = Config(f"{PROJECT_DIR}/tanks.conf")
 
         self.gameMap = GameMap()
         self.gameObjs = GameObjs()

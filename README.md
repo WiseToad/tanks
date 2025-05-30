@@ -8,7 +8,6 @@ The simple multiplayer 2D tanks game in Python, developed with my kids.
 
 #### REQUIREMENTS
 - pygame
-- ruamel.yaml
 
 #### CONFIGURE
 See src/tanks.yaml
