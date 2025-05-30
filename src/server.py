@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from threading import Thread, Lock
 from socket import socket, create_server
@@ -46,7 +46,7 @@ class Client:
         if data is None:
             self.disconnected = True
             return
-        
+
         if data.playerName is not None:
             self.tank.name = data.playerName
 
@@ -66,7 +66,7 @@ class Server:
     MISSLE_OBSTACLES = GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER
 
     def __init__(self):
-        self.config = Config(f"{SRC_DIR}/tanks.yaml")
+        self.config = Config(f"{SRC_DIR}/tanks.conf")
 
         self.gameMap = GameMap()
         self.gameObjs = GameObjs()
@@ -88,8 +88,8 @@ class Server:
         print("Waiting for connections")
 
         try:
-            host = self.config.get("server", {}).get("host", "localhost")
-            port = self.config.get("server", {}).get("port", 5000)
+            host = self.config.get("server.host", "localhost")
+            port = self.config.get("server.port", 5000)
             sock = create_server((host, port), backlog=Const.MAX_PLAYERS)
             sock.settimeout(1)
 

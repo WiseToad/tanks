@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from socket import socket, create_connection
 import pygame
@@ -45,7 +45,7 @@ class Game:
     running: bool
 
     def __init__(self):
-        self.config = Config(f"{SRC_DIR}/tanks.yaml")
+        self.config = Config(f"{SRC_DIR}/tanks.conf")
 
         self.gameMap = GameMap()
         self.gameObjs = GameObjs()
@@ -54,8 +54,8 @@ class Game:
         self.images = Images(f"{RESOURCE_DIR}/image")
 
     def run(self):
-        host = self.config.get("server", {}).get("host", "localhost")
-        port = self.config.get("server", {}).get("port", 5000)
+        host = self.config.get("server.host", "localhost")
+        port = self.config.get("server.port", 5000)
         self.conn = create_connection((host, port), timeout = 1)
         
         self.gameMap = ofBytes(self.conn.recv(Const.RECV_BUF_SIZE), GameMap)
@@ -77,7 +77,7 @@ class Game:
         self.clock = pygame.time.Clock()
 
         nameInputPos = self.gameMapPos + (self.gameMap.size * GameMap.BLOCK_SIZE - NameInput.SIZE) // 2
-        self.nameInput = NameInput(self.screen, self.font, nameInputPos, self.config.get("playerName", "PLAYER"))
+        self.nameInput = NameInput(self.screen, self.font, nameInputPos, self.config.get("player.name", "PLAYER"))
         self.sendName = False
 
         self.gameState = GameState.NAME_INPUT
@@ -123,8 +123,8 @@ class Game:
             case GameState.NAME_INPUT:
                 self.nameInput.handleKeyDown(event)
                 if self.nameInput.finished:
-                    self.config.put("playerName", self.nameInput.name)
-                    self.config.save(f"{SRC_DIR}/tanks.yaml")
+                    self.config["player.name"] = self.nameInput.name
+                    self.config.write()
                     self.sendName = True
 
                     self.gameState = GameState.PLAY
