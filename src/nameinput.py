@@ -1,7 +1,7 @@
-from typing import Callable
 import pygame
 import re
 
+from retropy.retrokey import RetroKey
 from const import Color
 from geometry import Vector, Rect
 from gamemap import GameMap
@@ -27,17 +27,23 @@ class NameInput:
         self.name = name
         self.finished = False
 
-    def handleKeyDown(self, event):
-        if re.fullmatch(r"[\w -]+", event.unicode) is not None:
-            if len(self.name) < self.MAX_NAME_LEN:
-                self.name += event.unicode.upper()
-        else:
-            match event.key:
-                case pygame.K_BACKSPACE:
-                    if len(self.name):
-                        self.name = self.name[:-1]
-                case pygame.K_RETURN:
-                    self.finished = True
+    def keyboardEvent(self, keycode: int, pressed: bool, character: int, modifiers: int):
+        if not pressed:
+            return
+
+        if character:
+            c = chr(character)
+            if re.fullmatch(r"[\w -]+", c) is not None:
+                if len(self.name) < self.MAX_NAME_LEN:
+                    self.name += c.upper()
+                return
+
+        match keycode:
+            case RetroKey.RETROK_BACKSPACE:
+                if len(self.name):
+                    self.name = self.name[:-1]
+            case RetroKey.RETROK_RETURN:
+                self.finished = True
 
     def draw(self):
         rect = Rect(self.pos, self.SIZE).toTuple()

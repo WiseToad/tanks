@@ -2,6 +2,12 @@ The simple multiplayer 2D tanks game in Python, developed with my kids.
 
 ![tanks](tanks.png)
 
+#### FEATURES
+- gameplay resembles famous NES game Battle City
+- allow multiple players to fight each other via network  
+  tested on local home network, but theoretically may work via Internet (didn't tested, though)
+- game is compatible with [RetroPy](https://github.com/WiseToad/RetroPy) libretro core
+
 #### COMPATIBILITY
 - developed with Python 3.11.2  
   It's a pity that Debian Bookworm and Raspi OS are delaying to get to Py 12+ so my generics are not so nice in the code as I would wish
@@ -10,11 +16,11 @@ The simple multiplayer 2D tanks game in Python, developed with my kids.
 - pygame
 
 #### CONFIGURE
-See src/tanks.yaml
+See tanks.conf
         
 #### USAGE
 - cd src
-- run server.py
+- run server.py once on some machine reachable for all clients via network
 - run tanks.py for each client that desires to play
 
 #### TODO

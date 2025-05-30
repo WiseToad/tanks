@@ -4,6 +4,8 @@ from socket import socket, create_connection
 import pygame
 import os
 
+from retropy.retrocore import RetroCore
+from retropy.retrokey import RetroKey
 from const import Const, Color
 from config import Config
 from geometry import Direction, Vector
@@ -16,11 +18,14 @@ SRC_DIR = os.path.normpath(os.path.dirname(__file__))
 PROJECT_DIR=os.path.normpath(f"{SRC_DIR}/..")
 RESOURCE_DIR = os.path.normpath(f"{PROJECT_DIR}/resource")
 
+def getCore():
+    return GameCore()
+
 class GameState(Enum):
     NAME_INPUT = 0
     PLAY = 1
 
-class Game:
+class GameCore(RetroCore):
     config: Config
 
     gameMap: GameMap
@@ -32,20 +37,21 @@ class Game:
 
     conn: socket
 
-    screen: pygame.Surface
     font: pygame.font.Font
 
     gameMapPos: Vector
 
     nameInput: NameInput
     sendName: bool
+
+    joypadState: set
+    joypadPressed: set
     
-    clock: pygame.time.Clock
     tick: int
 
-    running: bool
-
-    def __init__(self):
+    def __init__(self, standalone: bool = False):
+        super().__init__(None, Const.FPS)
+        
         self.config = Config(f"{PROJECT_DIR}/tanks.conf")
 
         self.gameMap = GameMap()
@@ -54,7 +60,6 @@ class Game:
 
         self.images = Images(f"{RESOURCE_DIR}/image")
 
-    def run(self):
         host = self.config.get("server.host", "localhost")
         port = self.config.get("server.port", 5000)
         self.conn = create_connection((host, port), timeout = 1)
@@ -63,9 +68,6 @@ class Game:
         if self.gameMap is None:
             raise Exception("Failed to get initial data from server")
 
-        pygame.init()
-        pygame.display.set_caption("Multiplayer tanks")
-
         self.font = pygame.font.SysFont(Const.INFOBAR_FONT, Const.INFOBAR_FONT_SIZE, bold=True)
 
         text = self.font.render("0", True, Color.GRAY)
@@ -73,56 +75,50 @@ class Game:
         self.gameMapPos = Vector(0, infoBarHeight)
 
         screenSize = self.gameMapPos + self.gameMap.size * GameMap.BLOCK_SIZE
-        self.screen = pygame.display.set_mode(screenSize, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SCALED, vsync=1)
-        
-        self.clock = pygame.time.Clock()
+        if standalone:
+            self.surface = pygame.display.set_mode(screenSize, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SCALED, vsync=1)
+            pygame.display.set_caption("Multiplayer tanks")
+
+            self.gameState = GameState.NAME_INPUT
+            self.sendName = False
+        else:
+            self.surface = pygame.Surface(screenSize, depth=32)
+
+            self.gameState = GameState.PLAY
+            self.sendName = True
 
         nameInputPos = self.gameMapPos + (self.gameMap.size * GameMap.BLOCK_SIZE - NameInput.SIZE) // 2
-        self.nameInput = NameInput(self.screen, self.font, nameInputPos, self.config.get("player.name", "PLAYER"))
-        self.sendName = False
+        self.nameInput = NameInput(self.surface, self.font, nameInputPos, self.config.get("player.name", "PLAYER"))
 
-        self.gameState = GameState.NAME_INPUT
+        self.joypadState = set()
+        self.joypadPressed = set()
 
-        self.running = True
-        try:
-            self.runGame()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            self.running = False
-
-    def runGame(self):
         self.tick = 0
-        while self.running:
-            self.nextFrame()
-            self.tick += 1
 
-            pygame.display.flip()
-            self.clock.tick(Const.FPS * 2)
-        
-        pygame.quit()
+    def nextFrame(self) -> pygame.BufferProxy:
+        self.handleHidState()
+        self.sendClientData()
+        self.recvServerData()
+        self.drawFrame()
+        self.tick += 1
 
-    def nextFrame(self):
-        if self.tick % 2 == 0:
-            self.fetchEvents()
-            self.pollKeyboard()
-            self.sendClientData()
-            self.recvServerData()
+        return super().nextFrame()
+
+    def joypadEvent(self, num: int, button: int, pressed: bool):
+        oldState = self.joypadState.copy()
+        if pressed:
+            self.joypadState.add(button)
         else:
-            self.drawFrame()
+            self.joypadState.discard(button)
+        self.joypadPressed = self.joypadState - oldState
 
-    def fetchEvents(self):
-        for event in pygame.event.get():
-            match event.type:
-                case pygame.QUIT:
-                    self.running = False
-                case pygame.KEYDOWN:
-                    self.handleKeyDown(event)
+    def keyboardEvent(self, keycode: int, pressed: bool, character: int, modifiers: int):
+        if self.gameState == GameState.NAME_INPUT:
+            self.nameInput.keyboardEvent(keycode, pressed, character, modifiers)
 
-    def handleKeyDown(self, event):
+    def handleHidState(self):
         match self.gameState:
             case GameState.NAME_INPUT:
-                self.nameInput.handleKeyDown(event)
                 if self.nameInput.finished:
                     self.config["player.name"] = self.nameInput.name
                     self.config.write()
@@ -131,22 +127,18 @@ class Game:
                     self.gameState = GameState.PLAY
 
             case GameState.PLAY:
-                match event.key:
-                    case pygame.K_SPACE:
-                        self.gameControls.fire = True
+                if RetroKey.JOYPAD_A in self.joypadPressed:
+                    self.gameControls.fire = True
 
-    def pollKeyboard(self):
-        self.gameControls.dir = None
-        if self.gameState == GameState.PLAY:
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT]:
-                self.gameControls.dir = Direction.LEFT
-            elif keys[pygame.K_RIGHT]:
-                self.gameControls.dir = Direction.RIGHT
-            elif keys[pygame.K_UP]:
-                self.gameControls.dir = Direction.UP
-            elif keys[pygame.K_DOWN]:
-                self.gameControls.dir = Direction.DOWN
+                self.gameControls.dir = None
+                if RetroKey.JOYPAD_LEFT in self.joypadState:
+                    self.gameControls.dir = Direction.LEFT
+                elif RetroKey.JOYPAD_RIGHT in self.joypadState:
+                    self.gameControls.dir = Direction.RIGHT
+                elif RetroKey.JOYPAD_UP in self.joypadState:
+                    self.gameControls.dir = Direction.UP
+                elif RetroKey.JOYPAD_DOWN in self.joypadState:
+                    self.gameControls.dir = Direction.DOWN
 
     def sendClientData(self):
         data = ClientData(gameControls=self.gameControls)
@@ -170,7 +162,7 @@ class Game:
             self.gameMap = data.gameMap
 
     def drawFrame(self):
-        self.screen.fill(Color.BLACK)
+        self.surface.fill(Color.BLACK)
 
         self.drawInfoBar()
         self.drawGameMap()
@@ -203,19 +195,19 @@ class Game:
         pos += Vector(2, 2)
 
         text = self.font.render(f"{tank.name.upper()}", True, Color.GRAY)
-        self.screen.blit(text, pos)
+        self.surface.blit(text, pos)
         pos += Vector(0, text.get_height())
 
         text = self.font.render(f"H: {tank.health}  ", True, Color.YELLOW)
-        self.screen.blit(text, pos)
+        self.surface.blit(text, pos)
         pos += Vector(text.get_width(), 0)
 
         text = self.font.render(f"W: {tank.wins}  ", True, Color.GREEN)
-        self.screen.blit(text, pos)
+        self.surface.blit(text, pos)
         pos += Vector(text.get_width(), 0)
 
         text = self.font.render(f"D: {tank.fails}", True, Color.RED)
-        self.screen.blit(text, pos)
+        self.surface.blit(text, pos)
 
     def drawGameMap(self):
         for i in range(self.gameMap.size.x):
@@ -234,7 +226,7 @@ class Game:
                 elif block in GameMap.TOWER:
                     image = self.images.tower
                 elif block in GameMap.WATER:
-                    phase = self.tick // 16 % 2
+                    phase = self.tick // 8 % 2
                     image = self.images.waters[phase]
 
                 if image is not None:
@@ -249,7 +241,7 @@ class Game:
                     self.drawImage(GameMap.getBlockRect(pos), self.images.camo)
 
     def drawTank(self, tank: Tank):
-        if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick // 2 % 2 != 0):
+        if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick % 2 != 0):
             self.drawDirectedObj(tank, self.images.tanks)
 
     def drawDirectedObj(self, obj: DirectedObj, images: dict[Direction, pygame.Surface]):
@@ -262,7 +254,63 @@ class Game:
 
     def drawImage(self, centeredTo: Rect, image: pygame.Surface):
         rect = self.gameMapPos + centeredTo.centered(Vector.ofTuple(image.get_size()))
-        self.screen.blit(image, rect.toTuple()) 
+        self.surface.blit(image, rect.toTuple()) 
+
+# Standalone mode
+
+class Game(GameCore):
+    joypadMap = {
+        pygame.K_LEFT: RetroKey.JOYPAD_LEFT,
+        pygame.K_RIGHT: RetroKey.JOYPAD_RIGHT,
+        pygame.K_UP: RetroKey.JOYPAD_UP,
+        pygame.K_DOWN: RetroKey.JOYPAD_DOWN,
+        pygame.K_SPACE: RetroKey.JOYPAD_A
+    }
+    keyMap = {
+        pygame.K_RETURN: RetroKey.RETROK_RETURN,
+        pygame.K_BACKSPACE: RetroKey.RETROK_BACKSPACE
+    }
+
+    clock: pygame.time.Clock
+    running: bool
+
+    def __init__(self):
+        super().__init__(True)
+        self.clock = pygame.time.Clock()
+
+    def run(self):
+        self.running = True
+        try:
+            while self.running:
+                self.handleEvents()
+                self.nextFrame()
+                pygame.display.flip()
+                self.clock.tick(Const.FPS)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.running = False
+
+    def handleEvents(self):
+        for event in pygame.event.get():
+            match event.type:
+                case pygame.QUIT:
+                    self.running = False
+                case pygame.KEYDOWN:
+                    self.handleKey(event, True)
+                case pygame.KEYUP:
+                    self.handleKey(event, False)
+
+    def handleKey(self, event: pygame.event.Event, pressed: bool):
+        button = self.joypadMap.get(event.key)
+        if button is not None:
+            self.joypadEvent(0, button, pressed)
+            return
+        
+        key = self.keyMap.get(event.key)
+        if key is not None or event.unicode:
+            self.keyboardEvent(key, pressed, ord(event.unicode), 0)
+            return
 
 if __name__ == "__main__":
     game = Game()
