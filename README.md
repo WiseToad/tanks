@@ -23,9 +23,9 @@ To meet these requirements do either `pip install ...` (Windows and so) or `apt 
 See tanks.conf
         
 #### USAGE
-- cd src
-- run server.py once on some machine reachable for all clients via network
-- run tanks.py for each client that desires to play
+- cd src/
+- run `server.py` once on some machine reachable for all clients via network
+- run `tanks.py` for each client that desires to play
 
 #### TODO
 - tanks of different colors for different players
