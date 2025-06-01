@@ -7,6 +7,8 @@ class Const:
     INFOBAR_FONT = "Arial"
     INFOBAR_FONT_SIZE = 16
 
+    MAP_TTL = FPS * 60 * 5
+
 class Color:
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)

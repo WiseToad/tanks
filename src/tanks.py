@@ -46,12 +46,12 @@ class GameCore(RetroCore):
 
     joypadState: set
     joypadPressed: set
-    
+
     tick: int
 
     def __init__(self, standalone: bool = False):
         super().__init__(None, Const.FPS)
-        
+
         self.config = Config(f"{PROJECT_DIR}/tanks.conf")
 
         self.gameMap = GameMap()
@@ -63,7 +63,7 @@ class GameCore(RetroCore):
         host = self.config.get("server.host", "localhost")
         port = self.config.get("server.port", 5000)
         self.conn = create_connection((host, port), timeout = 1)
-        
+
         self.gameMap = ofBytes(self.conn.recv(Const.RECV_BUF_SIZE), GameMap)
         if self.gameMap is None:
             raise Exception("Failed to get initial data from server")
@@ -309,7 +309,7 @@ class Game(GameCore):
         if button is not None:
             self.joypadEvent(0, button, pressed)
             return
-        
+
         key = self.keyMap.get(event.key)
         if key is not None or event.unicode:
             self.keyboardEvent(key, pressed, ord(event.unicode), 0)

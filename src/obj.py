@@ -47,5 +47,8 @@ class ObjCollection(Generic[Obj.T]):
             self.objs.pop(key, None)
         self.removed.clear()
 
+    def clear(self):
+        self.objs.clear()
+
     def __iter__(self) -> Iterator[Obj.T]:
         return (obj for key, obj in self.objs.items() if key not in self.removed)

@@ -60,6 +60,8 @@ class Server:
     gameMap: GameMap
     gameObjs: GameObjs
 
+    mapTtl: int
+
     lock: Lock
     running: bool
 
@@ -209,8 +211,7 @@ class Server:
             tank.missleTick = 0
 
     def runGame(self):
-        self.gameMap.load(f"{RESOURCE_DIR}/map/map.txt")
-
+        self.mapTtl = 0
         while self.running:
             self.nextFrame()
             time.sleep(1 / Const.FPS)
@@ -218,12 +219,29 @@ class Server:
     def nextFrame(self):
         self.lock.acquire(timeout=1)
         try:
+            self.mapTtl -= 1
+            if self.mapTtl <= 0:
+                self.reloadMap()
+
             self.handleTanks()
             self.moveMissles()
             self.animateObjects(self.gameObjs.punches, oneShot=True)
             self.animateObjects(self.gameObjs.booms, oneShot=True)
         finally:
             self.lock.release()
+
+    def reloadMap(self):
+        mapVersion = self.gameMap.version
+        self.gameMap.load(f"{RESOURCE_DIR}/map/map.txt")
+        self.gameMap.version = mapVersion + 1
+        self.mapTtl = Const.MAP_TTL
+
+        self.gameObjs.missles.clear()
+        self.gameObjs.punches.clear()
+        self.gameObjs.booms.clear()
+        
+        for tank in self.gameObjs.tanks:
+            self.spawnTank(tank)
 
     def handleTanks(self):
         for tank in self.gameObjs.tanks:
