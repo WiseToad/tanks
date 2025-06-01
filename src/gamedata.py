@@ -148,11 +148,13 @@ class GameControls(Serde):
 class ServerData(Serde):
     gameMap: GameMap = None
     gameObjs: GameObjs
+    mapTtl: int
 
-    __serde_fields__ = {"gameObjs", "gameMap"}
+    __serde_fields__ = {"gameObjs", "gameMap", "mapTtl"}
 
-    def __init__(self, *, gameObjs: ObjCollection):
+    def __init__(self, *, gameObjs: ObjCollection, mapTtl: int):
         self.gameObjs = gameObjs
+        self.mapTtl = mapTtl
 
 class ClientData(Serde):
     playerName: str = None

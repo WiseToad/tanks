@@ -34,8 +34,8 @@ class Client:
         self.conn.send(toBytes(gameMap))
         self.mapVersion = gameMap.version
 
-    def sendServerData(self, gameMap: GameMap, gameObjs: GameObjs):
-        data = ServerData(gameObjs=gameObjs)
+    def sendServerData(self, gameMap: GameMap, gameObjs: GameObjs, mapTtl: int):
+        data = ServerData(gameObjs=gameObjs, mapTtl=mapTtl)
         if gameMap.version > self.mapVersion:
             data.gameMap = gameMap
             self.mapVersion = gameMap.version
@@ -135,7 +135,7 @@ class Server:
                     self.lock.acquire(timeout=1)
                     try:
                         self.handleGameControls(client)
-                        client.sendServerData(self.gameMap, self.gameObjs)
+                        client.sendServerData(self.gameMap, self.gameObjs, self.mapTtl)
                     finally:
                         self.lock.release()
             finally:
@@ -232,7 +232,7 @@ class Server:
 
     def reloadMap(self):
         mapVersion = self.gameMap.version
-        self.gameMap.load(f"{RESOURCE_DIR}/map/map.txt")
+        self.gameMap.load(f"{RESOURCE_DIR}/map/map01.txt")
         self.gameMap.version = mapVersion + 1
         self.mapTtl = Const.MAP_TTL
 

@@ -1,8 +1,12 @@
+from geometry import Vector
+
 class Const:
     RECV_BUF_SIZE = 4096
 
     MAX_PLAYERS = 4
     FPS = 60
+
+    SCREEN_SIZE = Vector(1920, 1080) // 2
 
     INFOBAR_FONT = "Arial"
     INFOBAR_FONT_SIZE = 16

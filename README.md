@@ -30,7 +30,6 @@ See tanks.conf
 #### TODO
 - make tanks of different colors for different players, display tank color next to player name
 - fix config file loading bug when app failed when no config file or no param found
-- add map cycling on timeout (now there is only one map get "refreshed"), display map TTL countdown
+- add map cycling on timeout (now there is only one map get "refreshed")
 - allow two players to play on same client (needed especially for libretro cores)
-- make map, screen and info bar sizes fixed
 - design more maps

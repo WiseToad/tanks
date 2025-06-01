@@ -32,6 +32,7 @@ class GameCore(RetroCore):
     gameObjs: GameObjs
     gameControls: GameControls
     gameState: GameState
+    mapTtl: int
 
     images: Images
 
@@ -39,6 +40,8 @@ class GameCore(RetroCore):
 
     font: pygame.font.Font
 
+    infoBatHeight: int
+    ttlInfoWidth: int
     gameMapPos: Vector
 
     nameInput: NameInput
@@ -70,24 +73,24 @@ class GameCore(RetroCore):
 
         self.font = pygame.font.SysFont(Const.INFOBAR_FONT, Const.INFOBAR_FONT_SIZE, bold=True)
 
-        text = self.font.render("0", True, Color.GRAY)
-        infoBarHeight = text.get_height() * 2 + 4
-        self.gameMapPos = Vector(0, infoBarHeight)
+        text = self.font.render("00:00", True, Color.GRAY)
+        self.infoBarHeight = text.get_height() * 2 + 4
+        self.ttlInfoWidth = text.get_width() + 4
+        self.gameMapPos = Vector(0, self.infoBarHeight)
 
-        screenSize = self.gameMapPos + self.gameMap.size * GameMap.BLOCK_SIZE
         if standalone:
-            self.surface = pygame.display.set_mode(screenSize, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SCALED, vsync=1)
+            self.surface = pygame.display.set_mode(Const.SCREEN_SIZE, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SCALED | pygame.FULLSCREEN, vsync=1)
             pygame.display.set_caption("Multiplayer tanks")
 
             self.gameState = GameState.NAME_INPUT
             self.sendName = False
         else:
-            self.surface = pygame.Surface(screenSize, depth=32)
+            self.surface = pygame.Surface(Const.SCREEN_SIZE, depth=32)
 
             self.gameState = GameState.PLAY
             self.sendName = True
 
-        nameInputPos = self.gameMapPos + (self.gameMap.size * GameMap.BLOCK_SIZE - NameInput.SIZE) // 2
+        nameInputPos = self.gameMapPos + (GameMap.SIZE * GameMap.BLOCK_SIZE - NameInput.SIZE) // 2
         self.nameInput = NameInput(self.surface, self.font, nameInputPos, self.config.get("player.name", "PLAYER"))
 
         self.joypadState = set()
@@ -163,6 +166,7 @@ class GameCore(RetroCore):
         self.gameObjs = data.gameObjs
         if data.gameMap is not None:
             self.gameMap = data.gameMap
+        self.mapTtl = data.mapTtl
 
     def drawFrame(self):
         self.surface.fill(Color.BLACK)
@@ -189,10 +193,12 @@ class GameCore(RetroCore):
 
     def drawInfoBar(self):
         statsPos = Vector(0, 0)
-        statsWidth = self.gameMap.size.x * GameMap.BLOCK_SIZE // 4
+        statsWidth = (Const.SCREEN_SIZE.y - self.ttlInfoWidth) // 4
         for tank in self.gameObjs.tanks:
             self.drawTankStats(tank, statsPos)
             statsPos += Vector(statsWidth, 0)
+
+        self.drawMapTtl()
 
     def drawTankStats(self, tank: Tank, pos: Vector):
         pos += Vector(2, 2)
@@ -212,9 +218,15 @@ class GameCore(RetroCore):
         text = self.font.render(f"D: {tank.fails}", True, Color.RED)
         self.surface.blit(text, pos)
 
+    def drawMapTtl(self):
+        mapTtlSec = self.mapTtl // Const.FPS
+        text = self.font.render(f"{(mapTtlSec // 60):02d}:{(mapTtlSec % 60):02d}", True, Color.GRAY)
+        pos = Vector(Const.SCREEN_SIZE.x - self.ttlInfoWidth + 2, (self.infoBarHeight - text.get_height()) // 2)
+        self.surface.blit(text, pos)
+
     def drawGameMap(self):
-        for i in range(self.gameMap.size.x):
-            for j in range(self.gameMap.size.y):
+        for i in range(GameMap.SIZE.x):
+            for j in range(GameMap.SIZE.y):
                 pos = Vector(i, j)
                 block = self.gameMap.getBlock(pos)
 
@@ -236,8 +248,8 @@ class GameCore(RetroCore):
                     self.drawImage(GameMap.getBlockRect(pos), image)
 
     def drawGameMapCamo(self):
-        for i in range(self.gameMap.size.x):
-            for j in range(self.gameMap.size.y):
+        for i in range(GameMap.SIZE.x):
+            for j in range(GameMap.SIZE.y):
                 pos = Vector(i, j)
                 block = self.gameMap.getBlock(pos)
                 if block in GameMap.CAMO:
@@ -305,6 +317,10 @@ class Game(GameCore):
                     self.handleKey(event, False)
 
     def handleKey(self, event: pygame.event.Event, pressed: bool):
+        if event.key == pygame.K_ESCAPE:
+            self.running = False
+            return
+        
         button = self.joypadMap.get(event.key)
         if button is not None:
             self.joypadEvent(0, button, pressed)

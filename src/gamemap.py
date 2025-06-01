@@ -2,9 +2,9 @@ from serde import Serde
 from geometry import Vector, Rect
 
 class GameMap(Serde):
+    SIZE = Vector(30, 15)
     BLOCK_SIZE = 32
 
-    size: Vector
     blocks: list[str]
     spawns: list[Vector]
     version: int = 0
@@ -23,7 +23,6 @@ class GameMap(Serde):
         self.clear()
 
     def clear(self):
-        self.size = Vector()
         self.blocks = []
         self.spawns = []
         self.version = 0
@@ -31,7 +30,7 @@ class GameMap(Serde):
     def load(self, fileName):
         self.clear()
         with open(fileName, "r") as f:
-            width, height = 0, 0
+            y = 0
             for line in f:
                 line = line.rstrip("\n")
 
@@ -40,16 +39,12 @@ class GameMap(Serde):
                     i = line.find(self.SPAWN, p)
                     if i == -1:
                         break
-                    self.spawns.append(Vector(x=i, y=height))
+                    self.spawns.append(Vector(i, y))
                     p = i + 1
 
                 self.blocks.append(line)
 
-                if len(line) > width:
-                    width = len(line)
-                height += 1
-            
-            self.size = Vector(width, height)
+                y += 1
 
     def getBlock(self, pos: Vector) -> str:
         return self.blocks[pos.y][pos.x]

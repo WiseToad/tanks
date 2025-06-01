@@ -5,14 +5,9 @@ class RetroCore:
     surface: Surface
     __fps: int
 
-    def __init__(self, target: tuple[int, int] | Surface, fps: int):
+    def __init__(self, size: tuple[int, int], fps: int):
         pygame.init()
-        if isinstance(target, Surface):
-            self.surface = target
-        elif target is not None:
-            self.surface = Surface(target, depth=32)
-        else:
-            self.surface = None
+        self.surface = None if size is None else Surface(size, depth=32)
         self.__fps = fps
 
     def __del__(self):
