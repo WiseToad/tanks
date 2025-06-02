@@ -65,6 +65,7 @@ class Server:
     gameObjs: GameObjs
 
     mapTtl: int
+    nextColor: int
 
     lock: Lock
     running: bool
@@ -136,13 +137,16 @@ class Server:
                     if client.disconnected:
                         break
                     
-                    if not inGame and client.tank.name is not None:
-                        self.gameObjs.tanks.add(client.tank)
-                        self.spawnTank(client.tank)
-                        inGame = True
-
                     self.lock.acquire(timeout=1)
                     try:
+                        if not inGame and client.tank.name is not None:
+                            client.tank.color = self.nextColor
+                            self.nextColor = (self.nextColor + 1) % Const.MAX_PLAYERS
+
+                            self.gameObjs.tanks.add(client.tank)
+                            self.spawnTank(client.tank)
+                            inGame = True
+
                         self.handleGameControls(client)
                         client.sendServerData(self.gameMap, self.gameObjs, self.mapTtl)
                     finally:
@@ -221,6 +225,7 @@ class Server:
 
     def runGame(self):
         self.mapTtl = 0
+        self.nextColor = 0
         while self.running:
             self.nextFrame()
             time.sleep(1 / Const.FPS)

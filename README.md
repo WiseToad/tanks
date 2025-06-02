@@ -28,7 +28,9 @@ See tanks.conf
 - run `tanks.py` for each client that desires to play
 
 #### TODO
-- make tanks of different colors for different players, display tank color next to player name
 - fix config file loading bug when app failed when no config file or no param found
 - allow two players to play on same client (needed especially for libretro cores)
+- check limit of connected players not exceeded by new player trying to connect
+- reproduce and fix bug of spawning tank over other tank (that get spawned earlier and didn't ever move?)
+- add checks for map bounds do not break by moving objects - tanks and missles
 - design more maps

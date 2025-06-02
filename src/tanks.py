@@ -193,7 +193,7 @@ class GameCore(RetroCore):
 
     def drawInfoBar(self):
         statsPos = Vector(0, 0)
-        statsWidth = (Const.SCREEN_SIZE.y - self.ttlInfoWidth) // 4
+        statsWidth = (Const.SCREEN_SIZE.x - self.ttlInfoWidth) // 4
         for tank in self.gameObjs.tanks:
             self.drawTankStats(tank, statsPos)
             statsPos += Vector(statsWidth, 0)
@@ -201,7 +201,10 @@ class GameCore(RetroCore):
         self.drawMapTtl()
 
     def drawTankStats(self, tank: Tank, pos: Vector):
-        pos += Vector(2, 2)
+        image = self.images.tanks[tank.color][Direction.UP]
+        self.surface.blit(image, Vector(pos.x, (self.infoBarHeight - image.get_height()) // 2))
+
+        pos += Vector(2 + image.get_width(), 2)
 
         text = self.font.render(f"{tank.name.upper()}", True, Color.GRAY)
         self.surface.blit(text, pos)
@@ -257,7 +260,7 @@ class GameCore(RetroCore):
 
     def drawTank(self, tank: Tank):
         if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick % 2 != 0):
-            self.drawDirectedObj(tank, self.images.tanks)
+            self.drawDirectedObj(tank, self.images.tanks[tank.color])
 
     def drawDirectedObj(self, obj: DirectedObj, images: dict[Direction, pygame.Surface]):
         image = images[obj.heading]

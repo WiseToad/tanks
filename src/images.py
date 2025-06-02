@@ -11,7 +11,7 @@ class Images:
     waters: list[pygame.Surface]
     camo: pygame.Surface
 
-    tanks: dict[Direction, pygame.Surface]
+    tanks: list[dict[Direction, pygame.Surface]]
     missles: dict[Direction, pygame.Surface]
     punches: list[pygame.Surface]
     booms: list[pygame.Surface]
@@ -24,7 +24,12 @@ class Images:
         self.waters = self.loadImages(imageDir, "water-1", "water-2")
         self.camo = self.loadImage(imageDir, "camo")
 
-        self.tanks = self.loadForEnum(imageDir, "tank", Direction)
+        self.tanks = [
+            self.loadForEnum(imageDir, "tank-a", Direction),
+            self.loadForEnum(imageDir, "tank-b", Direction),
+            self.loadForEnum(imageDir, "tank-c", Direction),
+            self.loadForEnum(imageDir, "tank-d", Direction),
+        ]
         self.missles = self.loadForEnum(imageDir, "missle", Direction)
         self.punches = self.loadImages(imageDir, "punch-1")
         self.booms = self.loadImages(imageDir, "boom-1", "boom-2", "boom-3", "boom-4")

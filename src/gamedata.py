@@ -62,7 +62,8 @@ class Tank(DirectedObj):
     MISSLE_DELAY = 1 * Const.FPS // 2
 
     name: str = None
-    
+    color: int = 0
+
     state: TankState = TankState.START
     stateTick: int = 0
 
@@ -72,7 +73,7 @@ class Tank(DirectedObj):
     fails: int = 0
     wins: int = 0
 
-    __serde_fields__ = {"key", "pos", "heading", "name", "state", "health", "fails", "wins"}
+    __serde_fields__ = {"key", "pos", "heading", "name", "color", "state", "health", "fails", "wins"}
 
 class Missle(DirectedObj):
     SIZE = Vector(8, 8)
