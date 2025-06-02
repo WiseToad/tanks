@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from typing import Iterator
 from threading import Thread, Lock
 from socket import socket, create_server
 from random import randint
@@ -22,7 +23,7 @@ class Client:
     mapVersion: int
     gameControls: GameControls
     disconnected: bool
-
+    
     def __init__(self, conn: socket):
         self.conn = conn
         self.tank = Tank()
@@ -57,6 +58,9 @@ class Client:
 class Server:
     config: Config
 
+    mapFiles: list[str]
+    mapIter: Iterator[str]
+
     gameMap: GameMap
     gameObjs: GameObjs
 
@@ -70,6 +74,11 @@ class Server:
 
     def __init__(self):
         self.config = Config(f"{PROJECT_DIR}/tanks.conf")
+
+        mapDir = RESOURCE_DIR + "/map"
+        mapFiles = (os.path.join(mapDir, f) for f in os.listdir(mapDir) if f.endswith(".map"))
+        self.mapFiles = sorted(f for f in mapFiles if os.path.isfile(f))
+        self.mapIter = iter(self.mapFiles)
 
         self.gameMap = GameMap()
         self.gameObjs = GameObjs()
@@ -232,7 +241,14 @@ class Server:
 
     def reloadMap(self):
         mapVersion = self.gameMap.version
-        self.gameMap.load(f"{RESOURCE_DIR}/map/map01.txt")
+
+        try:
+            mapFile = next(self.mapIter)
+        except StopIteration:
+            self.mapIter = iter(self.mapFiles)
+            mapFile = next(self.mapIter)
+
+        self.gameMap.load(mapFile)
         self.gameMap.version = mapVersion + 1
         self.mapTtl = Const.MAP_TTL
 
