@@ -11,6 +11,7 @@ class GameMap(Serde):
 
     __serde_fields__ = {"size", "blocks"}
 
+    NOTHING = chr(0x7f)
     GROUND = " "
     CONCRETE = "#"
     BRICKS = "=123"
@@ -32,7 +33,10 @@ class GameMap(Serde):
         with open(fileName, "r") as f:
             y = 0
             for line in f:
-                line = line.rstrip("\n")
+                if y >= GameMap.SIZE.y:
+                    break
+
+                line = line[:GameMap.SIZE.x].rstrip("\n")
 
                 p = 0
                 while True:
@@ -47,7 +51,10 @@ class GameMap(Serde):
                 y += 1
 
     def getBlock(self, pos: Vector) -> str:
-        return self.blocks[pos.y][pos.x]
+        try:
+            return self.blocks[pos.y][pos.x]
+        except IndexError:
+            return GameMap.NOTHING
 
     def setBlock(self, pos: Vector, block: str):
         row = self.blocks[pos.y]

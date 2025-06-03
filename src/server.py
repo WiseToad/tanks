@@ -70,8 +70,8 @@ class Server:
     lock: Lock
     running: bool
 
-    TANK_OBSTACLES = GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER + GameMap.WATER
-    MISSLE_OBSTACLES = GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER
+    TANK_OBSTACLES = GameMap.NOTHING + GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER + GameMap.WATER
+    MISSLE_OBSTACLES = GameMap.NOTHING + GameMap.CONCRETE + GameMap.BRICKS + GameMap.TOWER
 
     def __init__(self):
         self.config = Config(f"{PROJECT_DIR}/tanks.conf")
@@ -301,42 +301,43 @@ class Server:
                     self.gameObjs.missles.remove(missle, lazy=True)
                     self.gameObjs.missles.remove(m, lazy=True)
 
-            elif isinstance(collided, Vector) and self.gameMap.getBlock(collided) in GameMap.TOWER:
-                missle.heading = reverseDir(missle.heading)
+            elif isinstance(collided, Vector): # collided with GameMap block
+                block = self.gameMap.getBlock(collided)
+                if block in GameMap.TOWER:
+                    missle.heading = reverseDir(missle.heading)
+                elif block not in GameMap.NOTHING:
+                    self.gameObjs.punches.add(Punch(centeredTo=missle.getRect()))
+                    self.gameObjs.missles.remove(missle, lazy=True)
 
-            else:
+                if block in GameMap.BRICKS and missle.lethal:
+                    phase = GameMap.BRICKS.find(block) + 1
+                    if phase >= len(GameMap.BRICKS):
+                        block = GameMap.GROUND
+                        self.gameObjs.booms.add(Boom(centeredTo=GameMap.getBlockRect(collided)))
+                    else:
+                        block = GameMap.BRICKS[phase]
+
+                    self.gameMap.setBlock(collided, block)
+                    self.gameMap.version += 1
+
+            else: # collided with GameObj
                 self.gameObjs.punches.add(Punch(centeredTo=missle.getRect()))
                 self.gameObjs.missles.remove(missle, lazy=True)
 
-                if missle.lethal:
-                    if isinstance(collided, Tank):
-                        if collided.state == TankState.FIGHT:
-                            collided.health -= 1
-                            if collided.health == 0:
-                                self.gameObjs.booms.add(Boom(centeredTo=collided.getRect()))
-                                collided.state = TankState.DEAD
-                                collided.stateTick = 0
+                if isinstance(collided, Tank) and missle.lethal:
+                    if collided.state == TankState.FIGHT:
+                        collided.health -= 1
+                        if collided.health == 0:
+                            self.gameObjs.booms.add(Boom(centeredTo=collided.getRect()))
+                            collided.state = TankState.DEAD
+                            collided.stateTick = 0
 
-                                collided.fails += 1
-                                if missle.tankKey == collided.key:
-                                    collided.wins -= 1
-                                else:
-                                    winner = self.gameObjs.tanks.get(missle.tankKey)
-                                    if winner is not None:
-                                        winner.wins += 1
-
-                    if isinstance(collided, Vector): # collided with GameMap block
-                        block = self.gameMap.getBlock(collided)
-                        if block in GameMap.BRICKS:
-                            phase = GameMap.BRICKS.find(block) + 1
-                            if phase >= len(GameMap.BRICKS):
-                                block = GameMap.GROUND
-                                self.gameObjs.booms.add(Boom(centeredTo=GameMap.getBlockRect(collided)))
+                            if missle.tankKey == collided.key:
+                                collided.score -= 1
                             else:
-                                block = GameMap.BRICKS[phase]
-
-                            self.gameMap.setBlock(collided, block)
-                            self.gameMap.version += 1
+                                winner = self.gameObjs.tanks.get(missle.tankKey)
+                                if winner is not None:
+                                    winner.score += 1
 
         self.gameObjs.missles.purge()
 

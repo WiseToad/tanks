@@ -71,10 +71,10 @@ class GameCore(RetroCore):
         if self.gameMap is None:
             raise Exception("Failed to get initial data from server")
 
-        self.font = pygame.font.SysFont(Const.INFOBAR_FONT, Const.INFOBAR_FONT_SIZE, bold=True)
+        self.font = pygame.font.SysFont(Const.FONT_NAME, GameMap.BLOCK_SIZE // 2, bold=True)
 
         text = self.font.render("00:00", True, Color.GRAY)
-        self.infoBarHeight = text.get_height() * 2 + 4
+        self.infoBarHeight = GameMap.BLOCK_SIZE * 3 // 2
         self.ttlInfoWidth = text.get_width() + 4
         self.gameMapPos = Vector(0, self.infoBarHeight)
 
@@ -202,24 +202,21 @@ class GameCore(RetroCore):
 
     def drawTankStats(self, tank: Tank, pos: Vector):
         image = self.images.tanks[tank.color][Direction.UP]
-        self.surface.blit(image, Vector(pos.x, (self.infoBarHeight - image.get_height()) // 2))
+        self.drawImage(image, Rect(pos, Vector(GameMap.BLOCK_SIZE, self.infoBarHeight)))
+        pos += Vector(GameMap.BLOCK_SIZE, 0)
 
-        pos += Vector(2 + image.get_width(), 2)
+        rowHeight = GameMap.BLOCK_SIZE // 2
 
-        text = self.font.render(f"{tank.name.upper()}", True, Color.GRAY)
-        self.surface.blit(text, pos)
-        pos += Vector(0, text.get_height())
+        text = self.font.render(tank.name.upper(), True, Color.WHITE)
+        self.drawImage(text, Rect(pos, Vector(text.get_width(), rowHeight)))
+        pos += Vector(0, rowHeight)
 
-        text = self.font.render(f"H: {tank.health}  ", True, Color.YELLOW)
-        self.surface.blit(text, pos)
-        pos += Vector(text.get_width(), 0)
+        text = self.font.render(f"Score: {tank.score}", True, Color.GRAY)
+        self.drawImage(text, Rect(pos, Vector(text.get_width(), rowHeight)))
+        pos += Vector(0, rowHeight)
 
-        text = self.font.render(f"W: {tank.wins}  ", True, Color.GREEN)
-        self.surface.blit(text, pos)
-        pos += Vector(text.get_width(), 0)
-
-        text = self.font.render(f"D: {tank.fails}", True, Color.RED)
-        self.surface.blit(text, pos)
+        text = self.font.render(f"Health: {tank.health}", True, Color.GRAY)
+        self.drawImage(text, Rect(pos, Vector(text.get_width(), rowHeight)))
 
     def drawMapTtl(self):
         mapTtlSec = self.mapTtl // Const.FPS
@@ -248,7 +245,7 @@ class GameCore(RetroCore):
                     image = self.images.waters[phase]
 
                 if image is not None:
-                    self.drawImage(GameMap.getBlockRect(pos), image)
+                    self.drawImage(image, GameMap.getBlockRect(pos) + self.gameMapPos)
 
     def drawGameMapCamo(self):
         for i in range(GameMap.SIZE.x):
@@ -256,7 +253,7 @@ class GameCore(RetroCore):
                 pos = Vector(i, j)
                 block = self.gameMap.getBlock(pos)
                 if block in GameMap.CAMO:
-                    self.drawImage(GameMap.getBlockRect(pos), self.images.camo)
+                    self.drawImage(self.images.camo, GameMap.getBlockRect(pos) + self.gameMapPos)
 
     def drawTank(self, tank: Tank):
         if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick % 2 != 0):
@@ -264,14 +261,14 @@ class GameCore(RetroCore):
 
     def drawDirectedObj(self, obj: DirectedObj, images: dict[Direction, pygame.Surface]):
         image = images[obj.heading]
-        self.drawImage(obj.getRect(), image)
+        self.drawImage(image, obj.getRect() + self.gameMapPos)
 
     def drawAnimatedObj(self, obj: GameObj, images: list[pygame.Surface]):
         image = images[obj.getPhase()]
-        self.drawImage(obj.getRect(), image)
+        self.drawImage(image, obj.getRect() + self.gameMapPos)
 
-    def drawImage(self, centeredTo: Rect, image: pygame.Surface):
-        rect = self.gameMapPos + centeredTo.centered(Vector.ofTuple(image.get_size()))
+    def drawImage(self, image: pygame.Surface, centeredTo: Rect):
+        rect = centeredTo.centered(Vector.ofTuple(image.get_size()))
         self.surface.blit(image, rect.toTuple()) 
 
 # Standalone mode

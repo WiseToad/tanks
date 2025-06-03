@@ -8,8 +8,7 @@ class Const:
 
     SCREEN_SIZE = Vector(1920, 1080) // 2
 
-    INFOBAR_FONT = "Arial"
-    INFOBAR_FONT_SIZE = 16
+    FONT_NAME = "Arial"
 
     MAP_TTL = FPS * 60 * 5
 

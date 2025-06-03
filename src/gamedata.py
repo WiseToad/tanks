@@ -70,10 +70,9 @@ class Tank(DirectedObj):
     missleTick: int = 0
 
     health: int = INITIAL_HEALTH
-    fails: int = 0
-    wins: int = 0
+    score: int = 0
 
-    __serde_fields__ = {"key", "pos", "heading", "name", "color", "state", "health", "fails", "wins"}
+    __serde_fields__ = {"key", "pos", "heading", "name", "color", "state", "health", "score"}
 
 class Missle(DirectedObj):
     SIZE = Vector(8, 8)
