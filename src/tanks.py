@@ -63,8 +63,8 @@ class GameCore(RetroCore):
 
         self.images = Images(f"{RESOURCE_DIR}/image")
 
-        host = self.config.get("server.host", "localhost")
-        port = self.config.get("server.port", 5000)
+        host = self.config["server.host"]
+        port = self.config["server.port"]
         self.conn = create_connection((host, port), timeout = 1)
 
         self.gameMap = ofBytes(self.conn.recv(Const.RECV_BUF_SIZE), GameMap)
@@ -91,7 +91,7 @@ class GameCore(RetroCore):
             self.sendName = True
 
         nameInputPos = self.gameMapPos + (GameMap.SIZE * GameMap.BLOCK_SIZE - NameInput.SIZE) // 2
-        self.nameInput = NameInput(self.surface, self.font, nameInputPos, self.config.get("player.name", "PLAYER"))
+        self.nameInput = NameInput(self.surface, self.font, nameInputPos, self.config["player.name"])
 
         self.joypadState = set()
         self.joypadStateBefore = set()

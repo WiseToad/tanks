@@ -101,8 +101,8 @@ class Server:
         print("Waiting for connections")
 
         try:
-            host = self.config.get("server.host", "localhost")
-            port = self.config.get("server.port", 5000)
+            host = self.config["server.host"]
+            port = self.config["server.port"]
             sock = create_server((host, port), backlog=Const.MAX_PLAYERS)
             sock.settimeout(1)
 
