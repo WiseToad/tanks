@@ -65,7 +65,6 @@ class Server:
     gameObjs: GameObjs
 
     mapTtl: int
-    nextColor: int
 
     lock: Lock
     running: bool
@@ -140,8 +139,11 @@ class Server:
                     self.lock.acquire(timeout=1)
                     try:
                         if not inGame and client.tank.name is not None:
-                            client.tank.color = self.nextColor
-                            self.nextColor = (self.nextColor + 1) % Const.MAX_PLAYERS
+                            if len(self.gameObjs.tanks) >= Const.MAX_PLAYERS:
+                                raise RuntimeError(f"Max player limit of {Const.MAX_PLAYERS} exceeded, connection aborted")
+
+                            colors = sorted(tank.color for tank in self.gameObjs.tanks)
+                            client.tank.color = next((color for i, color in enumerate(colors) if color != i), len(colors))
 
                             self.gameObjs.tanks.add(client.tank)
                             self.spawnTank(client.tank)
@@ -225,7 +227,6 @@ class Server:
 
     def runGame(self):
         self.mapTtl = 0
-        self.nextColor = 0
         while self.running:
             self.nextFrame()
             time.sleep(1 / Const.FPS)

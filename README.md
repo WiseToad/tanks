@@ -31,7 +31,5 @@ See tanks.conf
 - fix sudden crashes (due to short-term connectivity lost?)
 - reproduce and fix bug of spawning tank over other tank (that get spawned earlier and didn't ever move?)
 - allow two players to play on same client (needed especially for libretro cores)
-- choose tank color that is not present now in battle field (now colors merely cycled without this check)
-- check limit of connected players not exceeded by new player trying to connect
 - raise player limit, add more tank colors
 - design more maps

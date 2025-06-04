@@ -52,3 +52,6 @@ class ObjCollection(Generic[Obj.T]):
 
     def __iter__(self) -> Iterator[Obj.T]:
         return (obj for key, obj in self.objs.items() if key not in self.removed)
+
+    def __len__(self):
+        return self.objs.__len__()
