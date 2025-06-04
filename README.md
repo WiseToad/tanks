@@ -29,7 +29,6 @@ See tanks.conf
 
 #### TODO
 - fix sudden crashes (due to short-term connectivity lost?)
-- fix crashes when non-latin name entered in client
 - reproduce and fix bug of spawning tank over other tank (that get spawned earlier and didn't ever move?)
 - allow two players to play on same client (needed especially for libretro cores)
 - choose tank color that is not present now in battle field (now colors merely cycled without this check)

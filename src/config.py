@@ -10,7 +10,7 @@ class Config(ConfigObj):
     }
 
     def __init__(self, fileName: str):
-        super().__init__(infile=fileName, configspec=self.configspec)
+        super().__init__(infile=fileName, configspec=self.configspec, encoding="utf-8")
         
         result = self.validate(Validator(), preserve_errors=True)
         if result is not True:
