@@ -29,6 +29,8 @@ class Images:
             self.loadForEnum(imageDir, "tank-b", Direction),
             self.loadForEnum(imageDir, "tank-c", Direction),
             self.loadForEnum(imageDir, "tank-d", Direction),
+            self.loadForEnum(imageDir, "tank-e", Direction),
+            self.loadForEnum(imageDir, "tank-f", Direction)
         ]
         self.missles = self.loadForEnum(imageDir, "missle", Direction)
         self.punches = self.loadImages(imageDir, "punch-1")

@@ -3,7 +3,7 @@ from geometry import Vector
 class Const:
     RECV_BUF_SIZE = 4096
 
-    MAX_PLAYERS = 4
+    MAX_PLAYERS = 6
     FPS = 60
 
     SCREEN_SIZE = Vector(1920, 1080) // 2

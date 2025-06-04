@@ -211,11 +211,11 @@ class GameCore(RetroCore):
         self.drawImage(text, Rect(pos, Vector(text.get_width(), rowHeight)))
         pos += Vector(0, rowHeight)
 
-        text = self.font.render(f"Score: {tank.score}", True, Color.GRAY)
+        text = self.font.render(f"score: {tank.score}", True, Color.GRAY)
         self.drawImage(text, Rect(pos, Vector(text.get_width(), rowHeight)))
         pos += Vector(0, rowHeight)
 
-        text = self.font.render(f"Health: {tank.health}", True, Color.GRAY)
+        text = self.font.render(f"health: {tank.health}", True, Color.GRAY)
         self.drawImage(text, Rect(pos, Vector(text.get_width(), rowHeight)))
 
     def drawMapTtl(self):
