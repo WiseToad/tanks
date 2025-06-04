@@ -28,7 +28,6 @@ See tanks.conf
 - run `tanks.py` for each client that desires to play
 
 #### TODO
-- fix config file loading bug when app failed when no config file or no param found
 - fix sudden crashes (due to short-term connectivity lost?)
 - fix crashes when non-latin name entered in client
 - reproduce and fix bug of spawning tank over other tank (that get spawned earlier and didn't ever move?)
