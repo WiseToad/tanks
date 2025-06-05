@@ -31,5 +31,4 @@ See tanks.conf
 - fix sudden crashes (due to short-term connectivity lost?)
 - allow two players to play on same client (needed especially for libretro cores)
 - bonuses appearing randomly on map - health, rapid fire, velocity boost, vulnerability, etc
-- fade-in fade-out on map switch
 - design more maps
