@@ -39,6 +39,7 @@ class GameCore(RetroCore):
     conn: socket
 
     font: pygame.font.Font
+    fadeSurface: pygame.Surface
 
     infoBatHeight: int
     ttlInfoWidth: int
@@ -70,6 +71,8 @@ class GameCore(RetroCore):
         self.gameMap = ofBytes(self.conn.recv(Const.RECV_BUF_SIZE), GameMap)
         if self.gameMap is None:
             raise Exception("Failed to get initial data from server")
+
+        self.fadeSurface = pygame.Surface(GameMap.SIZE * GameMap.BLOCK_SIZE)
 
         self.font = pygame.font.SysFont(Const.FONT_NAME, GameMap.BLOCK_SIZE // 2, bold=True)
 
@@ -187,6 +190,7 @@ class GameCore(RetroCore):
             self.drawAnimatedObj(boom, self.images.booms)
 
         self.drawGameMapCamo()
+        self.fadeGameMap()
 
         if self.gameState == GameState.NAME_INPUT:
             self.nameInput.draw()
@@ -254,6 +258,17 @@ class GameCore(RetroCore):
                 block = self.gameMap.getBlock(pos)
                 if block in GameMap.CAMO:
                     self.drawImage(self.images.camo, GameMap.getBlockRect(pos) + self.gameMapPos)
+
+    def fadeGameMap(self):
+        phase = 0
+        duration = Const.FPS // 2
+        if self.mapTtl > Const.MAP_TTL - duration // 2:
+            phase = duration // 2 + self.mapTtl - Const.MAP_TTL
+        if self.mapTtl < duration:
+            phase = duration - self.mapTtl
+        if phase > 0:
+            self.fadeSurface.set_alpha(phase * 255 // duration)
+            self.surface.blit(self.fadeSurface, self.gameMapPos)
 
     def drawTank(self, tank: Tank):
         if tank.state == TankState.FIGHT or (tank.state == TankState.START and self.tick % 2 != 0):
