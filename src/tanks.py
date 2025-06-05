@@ -193,7 +193,7 @@ class GameCore(RetroCore):
 
     def drawInfoBar(self):
         statsPos = Vector(0, 0)
-        statsWidth = (Const.SCREEN_SIZE.x - self.ttlInfoWidth) // 4
+        statsWidth = (Const.SCREEN_SIZE.x - self.ttlInfoWidth) // Const.MAX_PLAYERS
         for tank in self.gameObjs.tanks:
             self.drawTankStats(tank, statsPos)
             statsPos += Vector(statsWidth, 0)
