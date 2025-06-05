@@ -201,6 +201,8 @@ class Server:
         return None
 
     def checkCollision(self, pos: Vector, obstacles: str) -> Vector | GameObj | None:
+        if pos.x < 0 or pos.y < 0:
+            return GameMap.NOTHING
         blockPos = pos // GameMap.BLOCK_SIZE
         block = self.gameMap.getBlock(blockPos)
         if block in obstacles:
