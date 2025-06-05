@@ -177,7 +177,7 @@ class Server:
         if not spawns:
             spawns = self.gameMap.spawns
 
-        spawnIdx = 0 #randint(0, len(spawns) - 1)
+        spawnIdx = randint(0, len(spawns) - 1)
         return spawns[spawnIdx]
 
     def moveObject(self, obj: DirectedObj, obstacles: str, dir: Direction = None) -> Vector | GameObj | None:
