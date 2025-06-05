@@ -143,7 +143,7 @@ class Server:
                                 raise RuntimeError(f"Max player limit of {Const.MAX_PLAYERS} exceeded, connection aborted")
 
                             colors = sorted(tank.color for tank in self.gameObjs.tanks)
-                            client.tank.color = next((color for i, color in enumerate(colors) if color != i), len(colors))
+                            client.tank.color = next((i for i, color in enumerate(colors) if color != i), len(colors))
 
                             self.gameObjs.tanks.add(client.tank)
                             self.spawnTank(client.tank)
@@ -171,14 +171,13 @@ class Server:
         spawns = []
         for spawn in self.gameMap.spawns:
             rect = GameMap.getBlockRect(spawn)
-            for tank in self.gameObjs.tanks:
-                if tank.state == TankState.DEAD or not rect.intersects(tank.getRect()):
-                    spawns.append(spawn)
+            if not any(rect.intersects(tank.getRect()) for tank in self.gameObjs.tanks if tank.state != TankState.DEAD):
+                spawns.append(spawn)
 
         if not spawns:
             spawns = self.gameMap.spawns
 
-        spawnIdx = randint(0, len(spawns) - 1)
+        spawnIdx = 0 #randint(0, len(spawns) - 1)
         return spawns[spawnIdx]
 
     def moveObject(self, obj: DirectedObj, obstacles: str, dir: Direction = None) -> Vector | GameObj | None:

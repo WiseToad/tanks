@@ -29,6 +29,5 @@ See tanks.conf
 
 #### TODO
 - fix sudden crashes (due to short-term connectivity lost?)
-- reproduce and fix bug of spawning tank over other tank (that get spawned earlier and didn't ever move?)
 - allow two players to play on same client (needed especially for libretro cores)
 - design more maps
