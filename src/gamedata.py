@@ -7,6 +7,10 @@ from obj import Obj, ObjCollection
 from geometry import Direction, Vector, Rect
 from gamemap import GameMap
 
+class GameCmd(Enum):
+    NEXT_MAP = 0,
+    PREV_MAP = 1
+
 class GameObj(Obj):
     SIZE: Vector
     PHASE_COUNT: int = 0
@@ -159,8 +163,10 @@ class ServerData(Serde):
 class ClientData(Serde):
     playerName: str = None
     gameControls: GameControls
+    gameCmd: GameCmd
 
-    __serde_fields__ = {"playerName", "gameControls"}
+    __serde_fields__ = {"playerName", "gameControls", "gameCmd"}
 
-    def __init__(self, *, gameControls: GameControls = None):
+    def __init__(self, *, gameControls: GameControls = None, gameCmd: GameCmd = None):
         self.gameControls = gameControls
+        self.gameCmd = gameCmd

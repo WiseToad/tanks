@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from socket import socket, create_connection
+from copy import deepcopy
 import pygame
 import os
 
@@ -32,6 +33,7 @@ class GameCore(RetroCore):
     gameObjs: GameObjs
     gameControls: GameControls
     gameState: GameState
+    gameCmd: GameCmd
     mapTtl: int
 
     images: Images
@@ -48,8 +50,8 @@ class GameCore(RetroCore):
     nameInput: NameInput
     sendName: bool
 
-    joypadState: set
-    joypadPressed: set
+    joypadState: list[set]
+    joypadStateBefore: list[set]
 
     tick: int
 
@@ -61,6 +63,7 @@ class GameCore(RetroCore):
         self.gameMap = GameMap()
         self.gameObjs = GameObjs()
         self.gameControls = GameControls()
+        self.gameCmd = None
 
         self.images = Images(f"{RESOURCE_DIR}/image")
 
@@ -96,8 +99,8 @@ class GameCore(RetroCore):
         nameInputPos = self.gameMapPos + (GameMap.SIZE * GameMap.BLOCK_SIZE - NameInput.SIZE) // 2
         self.nameInput = NameInput(self.surface, self.font, nameInputPos, self.config["player.name"])
 
-        self.joypadState = set()
-        self.joypadStateBefore = set()
+        self.joypadState = [set(), set()]
+        self.joypadStateBefore = [set(), set()]
 
         self.tick = 0
 
@@ -111,20 +114,23 @@ class GameCore(RetroCore):
         return super().nextFrame()
 
     def joypadEvent(self, num: int, button: int, pressed: bool):
-        if num != 0:
-            return
         if pressed:
-            self.joypadState.add(button)
+            self.joypadState[num].add(button)
         else:
-            self.joypadState.discard(button)
+            self.joypadState[num].discard(button)
 
     def keyboardEvent(self, keycode: int, pressed: bool, character: int, modifiers: int):
         if self.gameState == GameState.NAME_INPUT:
             self.nameInput.keyboardEvent(keycode, pressed, character, modifiers)
+        elif keycode == RetroKey.RETROK_PAGEUP:
+            self.gameCmd = GameCmd.PREV_MAP
+        elif keycode == RetroKey.RETROK_PAGEDOWN:
+            self.gameCmd = GameCmd.NEXT_MAP
 
     def handleHidState(self):
-        joypadPressed = self.joypadState - self.joypadStateBefore
-        self.joypadStateBefore = self.joypadState.copy()
+        joypadPressed = [self.joypadState[i] - self.joypadStateBefore[i] for i in range(0, 2)]
+        joypadReleased = [self.joypadStateBefore[i] - self.joypadState[i] for i in range(0, 2)]
+        self.joypadStateBefore = deepcopy(self.joypadState)
 
         match self.gameState:
             case GameState.NAME_INPUT:
@@ -136,21 +142,35 @@ class GameCore(RetroCore):
                     self.gameState = GameState.PLAY
 
             case GameState.PLAY:
-                if RetroKey.JOYPAD_A in joypadPressed:
-                    self.gameControls.fire = True
-
                 self.gameControls.dir = None
-                if RetroKey.JOYPAD_LEFT in self.joypadState:
-                    self.gameControls.dir = Direction.LEFT
-                elif RetroKey.JOYPAD_RIGHT in self.joypadState:
-                    self.gameControls.dir = Direction.RIGHT
-                elif RetroKey.JOYPAD_UP in self.joypadState:
-                    self.gameControls.dir = Direction.UP
-                elif RetroKey.JOYPAD_DOWN in self.joypadState:
-                    self.gameControls.dir = Direction.DOWN
+
+                if RetroKey.JOYPAD_SELECT in joypadPressed[0]:
+                    self.mapCycled = False
+                elif RetroKey.JOYPAD_SELECT in joypadReleased[0]:
+                    if not self.mapCycled:
+                        self.gameCmd = GameCmd.NEXT_MAP
+                elif RetroKey.JOYPAD_SELECT in self.joypadState[0]:
+                    if RetroKey.JOYPAD_LEFT in joypadPressed[0]:
+                        self.gameCmd = GameCmd.PREV_MAP
+                        self.mapCycled = True
+                    elif RetroKey.JOYPAD_RIGHT in joypadPressed[0]:
+                        self.gameCmd = GameCmd.NEXT_MAP
+                        self.mapCycled = True
+                else:
+                    if RetroKey.JOYPAD_A in joypadPressed[0]:
+                        self.gameControls.fire = True
+
+                    if RetroKey.JOYPAD_LEFT in self.joypadState[0]:
+                        self.gameControls.dir = Direction.LEFT
+                    elif RetroKey.JOYPAD_RIGHT in self.joypadState[0]:
+                        self.gameControls.dir = Direction.RIGHT
+                    elif RetroKey.JOYPAD_UP in self.joypadState[0]:
+                        self.gameControls.dir = Direction.UP
+                    elif RetroKey.JOYPAD_DOWN in self.joypadState[0]:
+                        self.gameControls.dir = Direction.DOWN
 
     def sendClientData(self):
-        data = ClientData(gameControls=self.gameControls)
+        data = ClientData(gameControls=self.gameControls, gameCmd=self.gameCmd)
         if self.sendName:
             data.playerName = self.nameInput.name
 
@@ -158,6 +178,7 @@ class GameCore(RetroCore):
 
         self.sendName = False
         self.gameControls.fire = False
+        self.gameCmd = None
 
     def recvServerData(self):
         data = ofBytes(self.conn.recv(Const.RECV_BUF_SIZE), ServerData)
@@ -260,14 +281,15 @@ class GameCore(RetroCore):
                     self.drawImage(self.images.camo, GameMap.getBlockRect(pos) + self.gameMapPos)
 
     def fadeGameMap(self):
-        phase = 0
-        duration = Const.FPS // 2
-        if self.mapTtl > Const.MAP_TTL - duration // 2:
-            phase = duration // 2 + self.mapTtl - Const.MAP_TTL
-        if self.mapTtl < duration:
-            phase = duration - self.mapTtl
-        if phase > 0:
-            self.fadeSurface.set_alpha(phase * 255 // duration)
+        alpha = 0
+        if self.mapTtl > Const.MAP_TTL - Const.FADE_IN_TICKS:
+            phase = self.mapTtl - (Const.MAP_TTL - Const.FADE_IN_TICKS)
+            alpha = phase * 255 // Const.FADE_IN_TICKS
+        if self.mapTtl < Const.FADE_OUT_TICKS:
+            phase = Const.FADE_OUT_TICKS - self.mapTtl
+            alpha = phase * 255 // Const.FADE_OUT_TICKS
+        if alpha > 0:
+            self.fadeSurface.set_alpha(alpha)
             self.surface.blit(self.fadeSurface, self.gameMapPos)
 
     def drawTank(self, tank: Tank):
@@ -290,15 +312,24 @@ class GameCore(RetroCore):
 
 class Game(GameCore):
     joypadMap = {
-        pygame.K_LEFT: RetroKey.JOYPAD_LEFT,
-        pygame.K_RIGHT: RetroKey.JOYPAD_RIGHT,
-        pygame.K_UP: RetroKey.JOYPAD_UP,
-        pygame.K_DOWN: RetroKey.JOYPAD_DOWN,
-        pygame.K_SPACE: RetroKey.JOYPAD_A
+        pygame.K_LEFT: (0, RetroKey.JOYPAD_LEFT),
+        pygame.K_RIGHT: (0, RetroKey.JOYPAD_RIGHT),
+        pygame.K_UP: (0, RetroKey.JOYPAD_UP),
+        pygame.K_DOWN: (0, RetroKey.JOYPAD_DOWN),
+        pygame.K_SPACE: (0, RetroKey.JOYPAD_A),
+        pygame.K_RCTRL: (0, RetroKey.JOYPAD_A),
+
+        pygame.K_a: (1, RetroKey.JOYPAD_LEFT),
+        pygame.K_d: (1, RetroKey.JOYPAD_RIGHT),
+        pygame.K_w: (1, RetroKey.JOYPAD_UP),
+        pygame.K_s: (1, RetroKey.JOYPAD_DOWN),
+        pygame.K_LCTRL: (1, RetroKey.JOYPAD_A)
     }
     keyMap = {
         pygame.K_RETURN: RetroKey.RETROK_RETURN,
-        pygame.K_BACKSPACE: RetroKey.RETROK_BACKSPACE
+        pygame.K_BACKSPACE: RetroKey.RETROK_BACKSPACE,
+        pygame.K_PAGEUP: RetroKey.RETROK_PAGEUP,
+        pygame.K_PAGEDOWN: RetroKey.RETROK_PAGEDOWN
     }
 
     clock: pygame.time.Clock
@@ -336,14 +367,15 @@ class Game(GameCore):
             self.running = False
             return
         
-        button = self.joypadMap.get(event.key)
+        num, button = self.joypadMap.get(event.key, (None, None))
         if button is not None:
-            self.joypadEvent(0, button, pressed)
+            self.joypadEvent(num, button, pressed)
             return
 
         key = self.keyMap.get(event.key)
-        if key is not None or event.unicode:
-            self.keyboardEvent(key, pressed, ord(event.unicode), 0)
+        character = ord(event.unicode) if event.unicode else 0
+        if key is not None or character != 0:
+            self.keyboardEvent(key, pressed, character, 0)
             return
 
 if __name__ == "__main__":

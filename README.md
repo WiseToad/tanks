@@ -27,8 +27,20 @@ See tanks.conf
 - run `server.py` once on some machine reachable for all clients via network
 - run `tanks.py` for each client that desires to play
 
+#### CONTROLS
+Keyboard:
+- arrow keys - move
+- `Space`, `Right Ctrl` - shoot
+- `PgUp`, `PgDn` - cycle maps
+Joypad:
+- `D-Pad` - move
+- `A` - shoot
+- `Select`+`D-Pad` - cycle maps
+- `Select` (on release) - cycle map forward 
+
 #### TODO
 - fix sudden crashes (due to short-term connectivity lost?)
 - allow two players to play on same client (needed especially for libretro cores)
-- bonuses appearing randomly on map - health, rapid fire, velocity boost, vulnerability, etc
+- implement bonuses appearing randomly on map - health, rapid fire, velocity boost, vulnerability, etc
+- test map cycling with joypads
 - design more maps

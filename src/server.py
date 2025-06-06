@@ -22,6 +22,7 @@ class Client:
     tank: Tank
     mapVersion: int
     gameControls: GameControls
+    gameCmd: GameCmd
     disconnected: bool
     
     def __init__(self, conn: socket):
@@ -55,16 +56,19 @@ class Client:
         if data.gameControls is not None:
             self.gameControls = data.gameControls
 
+        self.gameCmd = data.gameCmd
+
 class Server:
     config: Config
 
     mapFiles: list[str]
-    mapIter: Iterator[str]
+    mapIndex: int
 
     gameMap: GameMap
     gameObjs: GameObjs
 
     mapTtl: int
+    goPrevMap: bool
 
     lock: Lock
     running: bool
@@ -78,7 +82,7 @@ class Server:
         mapDir = RESOURCE_DIR + "/map"
         mapFiles = (os.path.join(mapDir, f) for f in os.listdir(mapDir) if f.endswith(".map"))
         self.mapFiles = sorted(f for f in mapFiles if os.path.isfile(f))
-        self.mapIter = iter(self.mapFiles)
+        self.mapIndex = 0
 
         self.gameMap = GameMap()
         self.gameObjs = GameObjs()
@@ -167,6 +171,14 @@ class Server:
         if client.gameControls.fire:
             self.shootMissle(client.tank)
 
+        if self.mapTtl > Const.FADE_OUT_TICKS and self.mapTtl <= Const.MAP_TTL - Const.FADE_IN_TICKS:
+            match client.gameCmd:
+                case GameCmd.NEXT_MAP:
+                    self.mapTtl = Const.FADE_OUT_TICKS
+                case GameCmd.PREV_MAP:
+                    self.mapTtl = Const.FADE_OUT_TICKS
+                    self.goPrevMap = True
+
     def findFreeSpawn(self) -> Vector:
         spawns = []
         for spawn in self.gameMap.spawns:
@@ -228,6 +240,7 @@ class Server:
 
     def runGame(self):
         self.mapTtl = 0
+        self.goPrevMap = False
         while self.running:
             self.nextFrame()
             time.sleep(1 / Const.FPS)
@@ -249,11 +262,10 @@ class Server:
     def reloadMap(self):
         mapVersion = self.gameMap.version
 
-        try:
-            mapFile = next(self.mapIter)
-        except StopIteration:
-            self.mapIter = iter(self.mapFiles)
-            mapFile = next(self.mapIter)
+        delta = 1 if not self.goPrevMap else -1
+        self.mapIndex = (self.mapIndex + delta) % len(self.mapFiles)
+        mapFile = self.mapFiles[self.mapIndex]
+        self.goPrevMap = False
 
         self.gameMap.load(mapFile)
         self.gameMap.version = mapVersion + 1
