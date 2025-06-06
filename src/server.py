@@ -63,12 +63,12 @@ class Server:
 
     mapFiles: list[str]
     mapIndex: int
+    mapTtl: int
+    mapGoBack: bool
 
     gameMap: GameMap
     gameObjs: GameObjs
 
-    mapTtl: int
-    goPrevMap: bool
 
     lock: Lock
     running: bool
@@ -175,9 +175,10 @@ class Server:
             match client.gameCmd:
                 case GameCmd.NEXT_MAP:
                     self.mapTtl = Const.FADE_OUT_TICKS
+                    self.mapGoBack = False
                 case GameCmd.PREV_MAP:
                     self.mapTtl = Const.FADE_OUT_TICKS
-                    self.goPrevMap = True
+                    self.mapGoBack = True
 
     def findFreeSpawn(self) -> Vector:
         spawns = []
@@ -240,7 +241,7 @@ class Server:
 
     def runGame(self):
         self.mapTtl = 0
-        self.goPrevMap = False
+        self.mapGoBack = None
         while self.running:
             self.nextFrame()
             time.sleep(1 / Const.FPS)
@@ -260,13 +261,13 @@ class Server:
             self.lock.release()
 
     def reloadMap(self):
-        mapVersion = self.gameMap.version
-
-        delta = 1 if not self.goPrevMap else -1
-        self.mapIndex = (self.mapIndex + delta) % len(self.mapFiles)
+        if self.mapGoBack is not None:
+            delta = 1 if not self.mapGoBack else -1
+            self.mapIndex = (self.mapIndex + delta) % len(self.mapFiles)
         mapFile = self.mapFiles[self.mapIndex]
-        self.goPrevMap = False
+        self.mapGoBack = False
 
+        mapVersion = self.gameMap.version
         self.gameMap.load(mapFile)
         self.gameMap.version = mapVersion + 1
         self.mapTtl = Const.MAP_TTL
