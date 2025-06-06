@@ -12,7 +12,7 @@ class Const:
 
     MAP_TTL = FPS * 60 * 5
     FADE_OUT_TICKS = FPS // 2
-    FADE_IN_TICKS = FPS // 4
+    FADE_IN_TICKS = FPS // 8
 
 class Color:
     BLACK = (0, 0, 0)
