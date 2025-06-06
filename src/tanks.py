@@ -150,10 +150,10 @@ class GameCore(RetroCore):
                     if not self.mapCycled:
                         self.gameCmd = GameCmd.NEXT_MAP
                 elif RetroKey.JOYPAD_SELECT in self.joypadState[0]:
-                    if RetroKey.JOYPAD_LEFT in joypadPressed[0]:
+                    if RetroKey.JOYPAD_B in joypadPressed[0]:
                         self.gameCmd = GameCmd.PREV_MAP
                         self.mapCycled = True
-                    elif RetroKey.JOYPAD_RIGHT in joypadPressed[0]:
+                    elif RetroKey.JOYPAD_A in joypadPressed[0]:
                         self.gameCmd = GameCmd.NEXT_MAP
                         self.mapCycled = True
                 else:

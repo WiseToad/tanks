@@ -36,7 +36,7 @@ Keyboard:
 Joypad:
 - `D-Pad` - move
 - `A` - shoot
-- `Select`+`D-Pad` - cycle maps
+- `Select`+`A`/`B` - cycle maps
 - `Select` (on release) - cycle map forward 
 
 #### TODO
