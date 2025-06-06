@@ -32,6 +32,7 @@ Keyboard:
 - arrow keys - move
 - `Space`, `Right Ctrl` - shoot
 - `PgUp`, `PgDn` - cycle maps
+
 Joypad:
 - `D-Pad` - move
 - `A` - shoot
